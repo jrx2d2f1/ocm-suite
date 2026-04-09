@@ -63,11 +63,11 @@ type FormState = {
 }
 
 // ── Constants ─────────────────────────────────────────────────────
-const ZIEL_TABS: { key: ZielTab; label: string }[] = [
-  { key: 'org',        label: 'Org-Ziele' },
-  { key: 'funktional', label: 'Funktionale Ziele' },
-  { key: 'people',     label: 'People-Ziele' },
-  { key: 'tech',       label: 'Tech-Ziele' },
+const ZIEL_TABS: { key: ZielTab; label: string; color: string }[] = [
+  { key: 'org',        label: 'Organisation', color: 'text-sky-300' },
+  { key: 'funktional', label: 'Funktionen',   color: 'text-violet-300' },
+  { key: 'people',     label: 'Menschen',     color: 'text-emerald-300' },
+  { key: 'tech',       label: 'Technologie',  color: 'text-teal' },
 ]
 const ZIEL_KEY: Record<ZielTab, keyof Pick<FormState, 'ziele_org' | 'ziele_funktional' | 'ziele_people' | 'ziele_tech'>> = {
   org: 'ziele_org', funktional: 'ziele_funktional', people: 'ziele_people', tech: 'ziele_tech',
@@ -78,10 +78,10 @@ const METHODE_OPTIONS = [
   'NPS-Survey', 'Beobachtung', 'Interview', 'Sonstiges',
 ]
 const AMPEL_DOT: Record<KpiAmpel, string> = {
-  green:  'bg-green-500',
-  yellow: 'bg-amber-500',
-  red:    'bg-red-500',
-  gray:   'bg-zinc-300 dark:bg-zinc-600',
+  green:  'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.6)]',
+  yellow: 'bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,0.5)]',
+  red:    'bg-rose-500 shadow-[0_0_6px_rgba(244,63,94,0.5)]',
+  gray:   'bg-zinc-500',
 }
 const AMPEL_LABEL: Record<KpiAmpel, string> = {
   gray: '–', green: 'Grün', yellow: 'Gelb', red: 'Rot',
@@ -121,7 +121,10 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 }
 function AmpelBadge({ ampel }: { ampel: KpiAmpel }) {
   return (
-    <span className={cn('inline-block w-3 h-3 rounded-full', AMPEL_DOT[ampel])} title={AMPEL_LABEL[ampel]} />
+    <span
+      className={cn('inline-block w-3.5 h-3.5 rounded-full', AMPEL_DOT[ampel])}
+      title={AMPEL_LABEL[ampel]}
+    />
   )
 }
 
@@ -327,20 +330,31 @@ export function CanvasView({
         </select>
 
         <div className="flex gap-1.5 flex-wrap">
-          {customerEngagements.map(eng => (
-            <button
-              key={eng.id}
-              onClick={() => router.push(`/canvas?engagement=${eng.id}`)}
-              className={cn(
-                'px-3 py-1 rounded-full text-sm font-medium transition-colors',
-                eng.id === activeEngagementId
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground'
-              )}
-            >
-              {eng.eng_alias ?? eng.name}
-            </button>
-          ))}
+          {customerEngagements.map(eng => {
+            const isActive = eng.id === activeEngagementId
+            const statusColor =
+              eng.status === 'active' ? 'text-emerald-400' :
+              eng.status === 'hold'   ? 'text-amber-400'   :
+              eng.status === 'closed' ? 'text-zinc-500'    :
+              'text-zinc-400'
+            return (
+              <button
+                key={eng.id}
+                onClick={() => router.push(`/canvas?engagement=${eng.id}`)}
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium transition-colors',
+                  isActive
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground'
+                )}
+              >
+                {!isActive && (
+                  <span className={cn('inline-block w-1.5 h-1.5 rounded-full flex-shrink-0', statusColor === 'text-emerald-400' ? 'bg-emerald-400' : statusColor === 'text-amber-400' ? 'bg-amber-400' : 'bg-zinc-500')} />
+                )}
+                {eng.eng_alias ?? eng.name}
+              </button>
+            )
+          })}
         </div>
       </div>
 
@@ -358,12 +372,12 @@ export function CanvasView({
             <SectionTitle>Warum</SectionTitle>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {([
-                { key: 'ausgangslage'              as const, label: 'Ausgangslage' },
+                { key: 'ausgangslage'              as const, label: 'Ausgangslage & Problem' },
                 { key: 'strategischer_kontext'     as const, label: 'Strategischer Kontext' },
-                { key: 'treiber'                   as const, label: 'Treiber' },
+                { key: 'treiber'                   as const, label: 'Treiber & Auslöser' },
                 { key: 'risiken_bei_nicht_handeln' as const, label: 'Risiken bei Nicht-Handeln' },
               ] as const).map(({ key, label }) => (
-                <div key={key} className="rounded-lg border bg-card p-4 space-y-2">
+                <div key={key} className={cn('rounded-lg border bg-card p-4 space-y-2', key === 'risiken_bei_nicht_handeln' && 'border-rose-500/30')}>
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
                   {editMode ? (
                     <textarea
@@ -393,8 +407,8 @@ export function CanvasView({
                   className={cn(
                     'px-3 py-1.5 rounded text-sm font-medium transition-colors',
                     activeZielTab === tab.key
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground'
+                      ? 'bg-muted/80 ' + tab.color + ' ring-1 ring-white/10'
+                      : 'bg-muted/40 text-muted-foreground hover:bg-muted/60 hover:text-foreground'
                   )}
                 >
                   {tab.label}
@@ -586,6 +600,12 @@ export function CanvasView({
                                 onChange={e => updateKpi(i, { name: e.target.value })}
                                 placeholder="KPI-Name"
                                 className="w-full rounded border bg-transparent px-2 py-1 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                              />
+                              <input
+                                value={kpi.sub ?? ''}
+                                onChange={e => updateKpi(i, { sub: e.target.value || null })}
+                                placeholder="Beschreibung (optional)"
+                                className="w-full mt-1 rounded border bg-transparent px-2 py-0.5 text-xs text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                               />
                             </td>
                             {(['baseline', 'target_value', 'current_value'] as const).map(field => (

@@ -42,13 +42,22 @@ export const CATEGORIES: TaskCategory[] = [
   'Erwartung',
 ]
 
+export const CATEGORY_ICON: Record<TaskCategory, string> = {
+  Kommunikation: '💬',
+  Enablement:    '📚',
+  Sounding:      '🔍',
+  Sponsoring:    '🤝',
+  Reporting:     '📋',
+  Erwartung:     '🎯',
+}
+
 export const CATEGORY_COLORS: Record<TaskCategory, string> = {
-  Kommunikation: 'bg-blue-500/15 text-blue-700 dark:text-blue-400',
-  Enablement:    'bg-green-500/15 text-green-700 dark:text-green-400',
-  Sounding:      'bg-purple-500/15 text-purple-700 dark:text-purple-400',
-  Sponsoring:    'bg-orange-500/15 text-orange-700 dark:text-orange-400',
-  Reporting:     'bg-zinc-500/15 text-zinc-600 dark:text-zinc-400',
-  Erwartung:     'bg-red-500/15 text-red-700 dark:text-red-400',
+  Kommunikation: 'bg-sky-500/20 text-sky-300',
+  Enablement:    'bg-emerald-500/20 text-emerald-300',
+  Sounding:      'bg-violet-500/20 text-violet-300',
+  Sponsoring:    'bg-orange-500/20 text-orange-300',
+  Reporting:     'bg-slate-500/20 text-slate-300',
+  Erwartung:     'bg-rose-500/20 text-rose-300',
 }
 
 export const CATEGORY_BORDER: Record<TaskCategory, string> = {
@@ -61,8 +70,8 @@ export const CATEGORY_BORDER: Record<TaskCategory, string> = {
 }
 
 export const STATUS_COLORS: Record<TaskStatus, string> = {
-  Backlog:      'text-zinc-500',
-  'In Progress':'text-blue-600',
-  Review:       'text-amber-600',
-  Done:         'text-green-600',
+  Backlog:      'text-slate-400',
+  'In Progress':'text-sky-400',
+  Review:       'text-amber-400',
+  Done:         'text-emerald-400',
 }

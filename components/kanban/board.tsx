@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, Fragment } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   DndContext,
@@ -24,16 +24,19 @@ import {
   STATUSES,
   CATEGORIES,
   CATEGORY_COLORS,
+  CATEGORY_ICON,
 } from './types'
 
 // ── Droppable cell ────────────────────────────────────────────────
 function DroppableCell({
   id,
   tasks,
+  engagementName,
   onCardClick,
 }: {
   id: string
   tasks: Task[]
+  engagementName: string
   onCardClick: (task: Task) => void
 }) {
   const { isOver, setNodeRef } = useDroppable({ id })
@@ -48,7 +51,7 @@ function DroppableCell({
     >
       <div className="flex flex-col gap-1.5">
         {tasks.map((task) => (
-          <TaskCard key={task.id} task={task} onClick={onCardClick} />
+          <TaskCard key={task.id} task={task} engagementName={engagementName} onClick={onCardClick} />
         ))}
       </div>
     </div>
@@ -77,6 +80,9 @@ export function KanbanBoard({
   )
 
   const activeEngagement = engagements.find((e) => e.id === activeEngagementId)
+  const engagementName = activeEngagement
+    ? (activeEngagement.eng_alias ?? activeEngagement.name)
+    : ''
 
   function getTasksFor(category: TaskCategory, status: TaskStatus) {
     return tasks.filter((t) => t.category === category && t.status === status)
@@ -157,14 +163,14 @@ export function KanbanBoard({
             style={{ gridTemplateColumns: '160px repeat(4, 1fr)' }}
           >
             {/* Header row */}
-            <div className="sticky top-0 z-10 bg-background border-b pb-2" />
+            <div className="sticky top-0 z-10 backdrop-blur-sm bg-background/80 border-b border-white/10 pb-2" />
             {STATUSES.map((status) => (
               <div
                 key={status}
-                className="sticky top-0 z-10 bg-background border-b pb-2 px-2"
+                className="sticky top-0 z-10 backdrop-blur-sm bg-background/80 border-b border-white/10 pb-2 px-2"
               >
                 <div className="flex items-baseline gap-1.5">
-                  <span className="text-sm font-semibold">{status}</span>
+                  <span className="text-sm font-semibold text-foreground">{status}</span>
                   <span className="text-xs text-muted-foreground">
                     {totalByStatus(status)}
                   </span>
@@ -174,21 +180,21 @@ export function KanbanBoard({
 
             {/* Category rows */}
             {CATEGORIES.map((category, i) => (
-              <>
+              <Fragment key={category}>
                 {/* Row label */}
                 <div
-                  key={`label-${category}`}
                   className={cn(
                     'flex items-start pt-2 pr-2',
-                    i < CATEGORIES.length - 1 && 'border-b'
+                    i < CATEGORIES.length - 1 && 'border-b border-white/10'
                   )}
                 >
                   <span
                     className={cn(
-                      'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
+                      'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium',
                       CATEGORY_COLORS[category]
                     )}
                   >
+                    <span>{CATEGORY_ICON[category]}</span>
                     {category}
                   </span>
                 </div>
@@ -199,17 +205,18 @@ export function KanbanBoard({
                     key={`cell-${category}-${status}`}
                     className={cn(
                       'p-1',
-                      i < CATEGORIES.length - 1 && 'border-b'
+                      i < CATEGORIES.length - 1 && 'border-b border-white/10'
                     )}
                   >
                     <DroppableCell
                       id={`${category}::${status}`}
                       tasks={getTasksFor(category, status)}
+                      engagementName={engagementName}
                       onCardClick={setSelectedTask}
                     />
                   </div>
                 ))}
-              </>
+              </Fragment>
             ))}
           </div>
         </div>
@@ -218,7 +225,7 @@ export function KanbanBoard({
         <DragOverlay>
           {activeTask && (
             <div className="rotate-1 opacity-90">
-              <TaskCard task={activeTask} onClick={() => {}} />
+              <TaskCard task={activeTask} engagementName={engagementName} onClick={() => {}} />
             </div>
           )}
         </DragOverlay>

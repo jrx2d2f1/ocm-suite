@@ -29,7 +29,7 @@ export function Sidebar() {
       {/* Logo */}
       <div className="flex h-16 items-center border-b border-bg-mid px-5 gap-2">
         <span className="text-teal font-bold tracking-tight">OCM</span>
-        <span className="text-ci-gray font-semibold tracking-tight">Suite</span>
+        <span className="text-foreground font-semibold tracking-tight">Suite</span>
       </div>
 
       {/* Navigation */}
@@ -46,7 +46,7 @@ export function Sidebar() {
                 'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
                 isActive
                   ? 'bg-bg-mid text-teal'
-                  : 'text-ci-muted hover:bg-bg-mid hover:text-teal'
+                  : 'text-muted-foreground hover:bg-bg-mid hover:text-teal'
               )}
             >
               <Icon className="h-4 w-4 shrink-0" />

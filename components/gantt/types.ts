@@ -48,15 +48,22 @@ export const MONTHS_DE = [
 ]
 
 export const MILESTONE_DOT: Record<MilestoneStatus, string> = {
-  planned:  'bg-zinc-400 dark:bg-zinc-500',
-  progress: 'bg-blue-500',
-  done:     'bg-green-500',
-  delayed:  'bg-destructive',
+  planned:  'bg-zinc-400',
+  progress: 'bg-sky-400',
+  done:     'bg-emerald-500',
+  delayed:  'bg-rose-500',
 }
 
 export const ENGAGEMENT_BAR: Record<EngagementStatus, string> = {
-  active: 'bg-primary/20 border border-primary/50',
-  draft:  'bg-muted border border-dashed border-border',
-  hold:   'bg-amber-100 border border-amber-400 dark:bg-amber-900/20 dark:border-amber-600',
-  closed: 'bg-muted/40 border border-border/40',
+  active: 'bg-teal/20 border border-teal/50',
+  draft:  'bg-muted/50 border border-dashed border-white/20',
+  hold:   'bg-amber-500/20 border border-amber-500/50',
+  closed: 'bg-muted/30 border border-white/10',
+}
+
+export const ENGAGEMENT_STATUS_LABEL: Record<EngagementStatus, string> = {
+  active: 'Aktiv',
+  draft:  'Entwurf',
+  hold:   'On Hold',
+  closed: 'Abgeschlossen',
 }

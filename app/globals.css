@@ -7,7 +7,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
+  --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -48,28 +48,28 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 
   /* ── OCM CI custom colors ─────────────────────────────────── */
-  --color-bg:       #2F3B44;
+  --color-bg:       #2A3740;
   --color-bg-dark:  #1E2B32;
   --color-bg-mid:   #3D4F5A;
   --color-teal:     #6DE8D8;
   --color-teal-dim: #1E5550;
-  --color-ci-gray:  #C5CDD3;
-  --color-ci-muted: #8AA0AC;
+  --color-ci-gray:  #D8E8F0;
+  --color-ci-muted: #9BB8C8;
 }
 
 /* ── shadcn CSS-Variables — OCM CI-Palette ───────────────────── */
 :root {
   /* Surface */
-  --background:        #2F3B44;
-  --foreground:        #C5CDD3;
+  --background:        #2A3740;
+  --foreground:        #D8E8F0;
 
-  /* Cards / panels */
-  --card:              #3D4F5A;
-  --card-foreground:   #C5CDD3;
+  /* Cards / panels — slightly lighter than background for elevation */
+  --card:              #344450;
+  --card-foreground:   #D8E8F0;
 
   /* Popovers (e.g. dropdowns) */
-  --popover:           #3D4F5A;
-  --popover-foreground: #C5CDD3;
+  --popover:           #344450;
+  --popover-foreground: #D8E8F0;
 
   /* Primary = Teal */
   --primary:           #6DE8D8;
@@ -77,11 +77,11 @@
 
   /* Secondary = bg-mid */
   --secondary:         #3D4F5A;
-  --secondary-foreground: #C5CDD3;
+  --secondary-foreground: #D8E8F0;
 
   /* Muted */
   --muted:             #3D4F5A;
-  --muted-foreground:  #8AA0AC;
+  --muted-foreground:  #9BB8C8;
 
   /* Accent = teal-dim (hover states) */
   --accent:            #1E5550;
@@ -90,8 +90,8 @@
   /* Destructive — keep red */
   --destructive:       oklch(0.577 0.245 27.325);
 
-  /* Borders / inputs */
-  --border:            #3D4F5A;
+  /* Borders / inputs — glass-style subtle separator */
+  --border:            rgba(255,255,255,0.1);
   --input:             #3D4F5A;
   --ring:              #6DE8D8;
 
@@ -106,12 +106,12 @@
 
   /* Sidebar */
   --sidebar:                   #1E2B32;
-  --sidebar-foreground:        #C5CDD3;
+  --sidebar-foreground:        #D8E8F0;
   --sidebar-primary:           #6DE8D8;
   --sidebar-primary-foreground: #1E2B32;
   --sidebar-accent:            #3D4F5A;
   --sidebar-accent-foreground: #6DE8D8;
-  --sidebar-border:            #3D4F5A;
+  --sidebar-border:            rgba(255,255,255,0.08);
   --sidebar-ring:              #6DE8D8;
 }
 
