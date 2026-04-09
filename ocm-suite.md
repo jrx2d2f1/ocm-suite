@@ -205,7 +205,7 @@ Phase 5     CRUD für alle Entitäten, PDF-Export, Polish
 ## Referenz-Dateien im Projekt
 
 - `ocm_schema.sql` — vollständiges Datenbankschema (962 Zeilen, 20 Tabellen)
-- `ocm-prototype-v3.html` — funktionaler HTML-Prototyp mit allen Views als Referenz für UX/Layout
+- `ocm-prototype.html` — funktionaler HTML-Prototyp mit allen Views als Referenz für UX/Layout
 - `OCM_Suite_Setup_Guide.docx` — Setup-Anleitung
 
 Der Prototyp (`ocm-prototype-v3.html`) ist die **primäre UX-Referenz** — alle Views sind dort implementiert und können direkt im Browser geöffnet werden. Bei Fragen zu Layout, Interaktionen oder Datenwerten: Prototyp konsultieren.

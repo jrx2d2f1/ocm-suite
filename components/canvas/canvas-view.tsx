@@ -86,6 +86,12 @@ const AMPEL_DOT: Record<KpiAmpel, string> = {
 const AMPEL_LABEL: Record<KpiAmpel, string> = {
   gray: '–', green: 'Grün', yellow: 'Gelb', red: 'Rot',
 }
+const WARUM_BORDER: Record<string, string> = {
+  ausgangslage:              '#f97316',  // orange-500
+  strategischer_kontext:     '#38bdf8',  // sky-400
+  treiber:                   '#fbbf24',  // amber-400
+  risiken_bei_nicht_handeln: '#f43f5e',  // rose-500
+}
 
 // ── Helpers ───────────────────────────────────────────────────────
 function initForm(canvas: Canvas | null): FormState {
@@ -114,7 +120,8 @@ function initForm(canvas: Canvas | null): FormState {
 // ── Small display components ──────────────────────────────────────
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+    <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-widest text-foreground/60">
+      <span className="inline-block w-1 h-4 rounded-sm bg-primary/50 shrink-0" />
       {children}
     </h2>
   )
@@ -161,7 +168,7 @@ export function CanvasView({
     return () => window.removeEventListener('beforeunload', handler)
   }, [editMode])
 
-  // ── Customer optgroups ────────────────────────────────────────
+  // ── Customer list ─────────────────────────────────────────────
   const parents = useMemo(() => customers.filter(c => !c.parent_id), [customers])
   const childrenByParent = useMemo(() => {
     const map: Record<string, Customer[]> = {}
@@ -170,6 +177,19 @@ export function CanvasView({
     })
     return map
   }, [customers])
+
+  // Flat ordered list: parent first, then its children — only those with engagements
+  const customersWithEngagements = useMemo(() =>
+    parents.flatMap(p => {
+      const children = (childrenByParent[p.id] ?? []).filter(c =>
+        engagements.some(e => e.customer_id === c.id)
+      )
+      const parentHasEng = engagements.some(e => e.customer_id === p.id)
+      return [...(parentHasEng ? [p] : []), ...children]
+    }),
+    [parents, childrenByParent, engagements]
+  )
+
   const customerEngagements = useMemo(
     () => engagements.filter(e => e.customer_id === activeCustomerId),
     [engagements, activeCustomerId]
@@ -304,39 +324,37 @@ export function CanvasView({
         )}
       </div>
 
-      {/* Customer select + engagement pills */}
-      <div className="flex flex-wrap items-center gap-3 pb-4 border-b">
-        <select
-          value={activeCustomerId}
-          onChange={e => handleCustomerChange(e.target.value)}
-          className="rounded-md border bg-background px-3 py-1.5 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-        >
-          {parents.map(parent => {
-            const children = (childrenByParent[parent.id] ?? []).filter(c =>
-              engagements.some(e => e.customer_id === c.id)
+      {/* Customer pills + engagement pills */}
+      <div className="space-y-2 pb-4 border-b">
+        <div className="flex gap-1.5 flex-wrap">
+          {customersWithEngagements.map(c => {
+            const isActive = c.id === activeCustomerId
+            const isChild = !!c.parent_id
+            return (
+              <button
+                key={c.id}
+                onClick={() => handleCustomerChange(c.id)}
+                className={cn(
+                  'px-3 py-1 rounded-full text-sm font-medium transition-colors',
+                  isChild && 'ml-2',
+                  isActive
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground'
+                )}
+              >
+                {c.name}
+              </button>
             )
-            if (children.length > 0) {
-              return (
-                <optgroup key={parent.id} label={parent.name}>
-                  {children.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </optgroup>
-              )
-            }
-            if (engagements.some(e => e.customer_id === parent.id)) {
-              return <option key={parent.id} value={parent.id}>{parent.name}</option>
-            }
-            return null
           })}
-        </select>
+        </div>
 
         <div className="flex gap-1.5 flex-wrap">
           {customerEngagements.map(eng => {
             const isActive = eng.id === activeEngagementId
-            const statusColor =
-              eng.status === 'active' ? 'text-emerald-400' :
-              eng.status === 'hold'   ? 'text-amber-400'   :
-              eng.status === 'closed' ? 'text-zinc-500'    :
-              'text-zinc-400'
+            const dotColor =
+              eng.status === 'active' ? 'bg-emerald-400' :
+              eng.status === 'hold'   ? 'bg-amber-400'   :
+              'bg-zinc-500'
             return (
               <button
                 key={eng.id}
@@ -348,9 +366,7 @@ export function CanvasView({
                     : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground'
                 )}
               >
-                {!isActive && (
-                  <span className={cn('inline-block w-1.5 h-1.5 rounded-full flex-shrink-0', statusColor === 'text-emerald-400' ? 'bg-emerald-400' : statusColor === 'text-amber-400' ? 'bg-amber-400' : 'bg-zinc-500')} />
-                )}
+                {!isActive && <span className={cn('inline-block w-1.5 h-1.5 rounded-full shrink-0', dotColor)} />}
                 {eng.eng_alias ?? eng.name}
               </button>
             )
@@ -377,7 +393,11 @@ export function CanvasView({
                 { key: 'treiber'                   as const, label: 'Treiber & Auslöser' },
                 { key: 'risiken_bei_nicht_handeln' as const, label: 'Risiken bei Nicht-Handeln' },
               ] as const).map(({ key, label }) => (
-                <div key={key} className={cn('rounded-lg border bg-card p-4 space-y-2', key === 'risiken_bei_nicht_handeln' && 'border-rose-500/30')}>
+                <div
+                  key={key}
+                  className="rounded-lg border border-l-4 bg-card p-4 space-y-2"
+                  style={{ borderLeftColor: WARUM_BORDER[key] + '90' }}
+                >
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
                   {editMode ? (
                     <textarea
@@ -407,7 +427,7 @@ export function CanvasView({
                   className={cn(
                     'px-3 py-1.5 rounded text-sm font-medium transition-colors',
                     activeZielTab === tab.key
-                      ? 'bg-muted/80 ' + tab.color + ' ring-1 ring-white/10'
+                      ? 'bg-muted/80 font-semibold ring-1 ring-white/10 ' + tab.color
                       : 'bg-muted/40 text-muted-foreground hover:bg-muted/60 hover:text-foreground'
                   )}
                 >
@@ -435,7 +455,7 @@ export function CanvasView({
                           </>
                         ) : (
                           <p className="text-sm leading-relaxed">
-                            <span className="text-muted-foreground mr-1.5">•</span>{item}
+                            <span className="text-primary/60 mr-1.5">→</span>{item}
                           </p>
                         )}
                       </div>
@@ -475,86 +495,91 @@ export function CanvasView({
             {form.phases.length === 0 ? (
               <p className="text-sm text-muted-foreground italic">Keine Phasen definiert.</p>
             ) : (
-              <div className="flex gap-4 overflow-x-auto pb-2">
-                {form.phases.map((phase, i) => (
-                  <div
-                    key={phase.id ?? `new-${i}`}
-                    className="relative shrink-0 w-60 rounded-lg border bg-card p-4 space-y-2"
-                    style={{ borderTopWidth: 3, borderTopColor: phase.color ?? '#4f8ef7' }}
-                  >
-                    {editMode && (
-                      <button
-                        onClick={() => removePhase(i)}
-                        className="absolute top-2 right-2 text-muted-foreground hover:text-destructive transition-colors"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    )}
+              <div className="relative pl-7">
+                {/* Vertical connector line */}
+                {form.phases.length > 1 && (
+                  <div className="absolute left-[9px] top-3 bottom-3 w-px bg-white/10" />
+                )}
+                <div className="space-y-5">
+                  {form.phases.map((phase, i) => (
+                    <div key={phase.id ?? `new-${i}`} className="relative flex gap-4">
+                      {/* Timeline dot */}
+                      <div
+                        className="absolute -left-7 top-1.5 w-4 h-4 rounded-full ring-2 ring-background z-10 shrink-0"
+                        style={{ backgroundColor: phase.color ?? '#4f8ef7' }}
+                      />
+                      {/* Card */}
+                      <div className="flex-1 rounded-lg border bg-card p-4 space-y-2">
+                        {editMode && (
+                          <button
+                            onClick={() => removePhase(i)}
+                            className="absolute top-2 right-2 text-muted-foreground hover:text-destructive transition-colors"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        )}
 
-                    {editMode ? (
-                      <div className="space-y-2 pr-5">
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="color"
-                            value={phase.color ?? '#4f8ef7'}
-                            onChange={e => updatePhase(i, { color: e.target.value })}
-                            className="w-6 h-6 shrink-0 rounded cursor-pointer border p-0.5 bg-transparent"
-                          />
-                          <input
-                            value={phase.title}
-                            onChange={e => updatePhase(i, { title: e.target.value })}
-                            placeholder="Titel"
-                            className="flex-1 rounded border bg-transparent px-2 py-1 text-sm font-semibold focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                          />
-                        </div>
-                        <input
-                          value={phase.dates_label ?? ''}
-                          onChange={e => updatePhase(i, { dates_label: e.target.value })}
-                          placeholder="Jan – Mär 2024"
-                          className="w-full rounded border bg-transparent px-2 py-1 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                        />
-                        <textarea
-                          value={phase.description ?? ''}
-                          onChange={e => updatePhase(i, { description: e.target.value })}
-                          placeholder="Aktivitäten / Beschreibung"
-                          rows={3}
-                          className="w-full rounded border bg-transparent px-2 py-1 text-xs resize-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                        />
-                        <textarea
-                          value={phase.goal ?? ''}
-                          onChange={e => updatePhase(i, { goal: e.target.value })}
-                          placeholder="Meilenstein / Exit-Kriterium"
-                          rows={2}
-                          className="w-full rounded border bg-transparent px-2 py-1 text-xs resize-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                        />
-                      </div>
-                    ) : (
-                      <>
-                        <div className="flex items-center gap-2">
-                          <span
-                            className="shrink-0 inline-block w-2.5 h-2.5 rounded-full"
-                            style={{ backgroundColor: phase.color ?? '#4f8ef7' }}
-                          />
-                          <p className="text-sm font-semibold leading-tight">{phase.title}</p>
-                        </div>
-                        {phase.dates_label && (
-                          <p className="text-xs text-muted-foreground">{phase.dates_label}</p>
-                        )}
-                        {phase.description && (
-                          <p className="text-xs leading-relaxed text-muted-foreground line-clamp-5">
-                            {phase.description}
-                          </p>
-                        )}
-                        {phase.goal && (
-                          <div className="pt-2 border-t space-y-0.5">
-                            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Ziel</p>
-                            <p className="text-xs leading-relaxed">{phase.goal}</p>
+                        {editMode ? (
+                          <div className="space-y-2 pr-5">
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="color"
+                                value={phase.color ?? '#4f8ef7'}
+                                onChange={e => updatePhase(i, { color: e.target.value })}
+                                className="w-6 h-6 shrink-0 rounded cursor-pointer border p-0.5 bg-transparent"
+                              />
+                              <input
+                                value={phase.title}
+                                onChange={e => updatePhase(i, { title: e.target.value })}
+                                placeholder="Titel"
+                                className="flex-1 rounded border bg-transparent px-2 py-1 text-sm font-semibold focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                              />
+                            </div>
+                            <input
+                              value={phase.dates_label ?? ''}
+                              onChange={e => updatePhase(i, { dates_label: e.target.value })}
+                              placeholder="Jan – Mär 2024"
+                              className="w-full rounded border bg-transparent px-2 py-1 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                            />
+                            <textarea
+                              value={phase.description ?? ''}
+                              onChange={e => updatePhase(i, { description: e.target.value })}
+                              placeholder="Aktivitäten / Beschreibung"
+                              rows={3}
+                              className="w-full rounded border bg-transparent px-2 py-1 text-xs resize-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                            />
+                            <textarea
+                              value={phase.goal ?? ''}
+                              onChange={e => updatePhase(i, { goal: e.target.value })}
+                              placeholder="Meilenstein / Exit-Kriterium"
+                              rows={2}
+                              className="w-full rounded border bg-transparent px-2 py-1 text-xs resize-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                            />
                           </div>
+                        ) : (
+                          <>
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-semibold leading-tight">{phase.title}</p>
+                              {phase.dates_label && (
+                                <span className="text-xs text-muted-foreground">· {phase.dates_label}</span>
+                              )}
+                            </div>
+                            {phase.description && (
+                              <p className="text-xs leading-relaxed text-muted-foreground">
+                                {phase.description}
+                              </p>
+                            )}
+                            {phase.goal && (
+                              <p className="text-xs leading-relaxed italic border-l-2 pl-2" style={{ borderLeftColor: (phase.color ?? '#4f8ef7') + '80' }}>
+                                {phase.goal}
+                              </p>
+                            )}
+                          </>
                         )}
-                      </>
-                    )}
-                  </div>
-                ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </section>
@@ -574,7 +599,25 @@ export function CanvasView({
               )}
             </div>
 
-            {/* KPI table */}
+            {/* Erfolg-Narrativ — shown first */}
+            <div className="rounded-lg border border-l-4 border-l-primary/40 bg-card p-4 space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Erfolg-Narrativ</p>
+              {editMode ? (
+                <textarea
+                  value={form.erfolg_narrativ}
+                  onChange={e => setField('erfolg_narrativ', e.target.value)}
+                  rows={4}
+                  placeholder="Wie sieht Erfolg konkret aus?"
+                  className="w-full rounded border bg-transparent px-2 py-1.5 text-sm resize-none placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                />
+              ) : (
+                <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                  {form.erfolg_narrativ || <span className="text-muted-foreground italic">–</span>}
+                </p>
+              )}
+            </div>
+
+            {/* KPI table — shown second */}
             <div className="rounded-lg border overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -671,24 +714,6 @@ export function CanvasView({
                   </tbody>
                 </table>
               </div>
-            </div>
-
-            {/* Erfolg-Narrativ */}
-            <div className="rounded-lg border bg-card p-4 space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Erfolg-Narrativ</p>
-              {editMode ? (
-                <textarea
-                  value={form.erfolg_narrativ}
-                  onChange={e => setField('erfolg_narrativ', e.target.value)}
-                  rows={4}
-                  placeholder="Wie sieht Erfolg konkret aus?"
-                  className="w-full rounded border bg-transparent px-2 py-1.5 text-sm resize-none placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                />
-              ) : (
-                <p className="text-sm leading-relaxed whitespace-pre-wrap">
-                  {form.erfolg_narrativ || <span className="text-muted-foreground italic">–</span>}
-                </p>
-              )}
             </div>
           </section>
 

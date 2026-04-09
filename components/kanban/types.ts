@@ -7,6 +7,12 @@ export type TaskCategory =
   | 'Reporting'
   | 'Erwartung'
 
+export interface TaskStakeholder {
+  stakeholder_id: string
+  role_in_task: string | null
+  stakeholders: { id: string; name: string; stakeholder_type: string } | null
+}
+
 export interface Task {
   id: string
   engagement_id: string
@@ -16,11 +22,13 @@ export interface Task {
   category: TaskCategory
   due: string | null
   owner_user_id: string | null
+  owner_name: string | null
   beschreibung: string | null
   ziel: string | null
   mitarbeitende: string[] | null
   goal_id: string | null
   sort_order: number
+  task_stakeholders: TaskStakeholder[] | null
 }
 
 export interface Engagement {
