@@ -17,7 +17,17 @@ export default async function KanbanPage({
     .is('deleted_at', null)
     .single()
 
-  if (!membership) redirect('/login')
+  if (!membership) {
+    return (
+      <div className="space-y-2">
+        <h1 className="text-2xl font-semibold tracking-tight">Kanban</h1>
+        <p className="text-sm text-muted-foreground">
+          Keine Organisation gefunden. Bitte Seed-Skript ausführen:
+          Supabase Dashboard → SQL Editor → <code className="font-mono text-xs bg-muted px-1 py-0.5 rounded">scripts/seed.sql</code>
+        </p>
+      </div>
+    )
+  }
 
   // Alle Engagements (für Picker)
   const { data: engagements } = await supabase
