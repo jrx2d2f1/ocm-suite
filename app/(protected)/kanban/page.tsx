@@ -10,23 +10,19 @@ export default async function KanbanPage({
   const { engagement: engagementId } = await searchParams
   const supabase = await createClient()
 
-  // Org des eingeloggten Users
+  // Session-User ermitteln
+  const { data: { user } } = await supabase.auth.getUser()
+
+  // Org des eingeloggten Users — explizit nach user_id filtern
   const { data: membership } = await supabase
     .from('org_memberships')
     .select('org_id')
+    .eq('user_id', user?.id ?? '')
     .is('deleted_at', null)
-    .single()
+    .maybeSingle()
 
   if (!membership) {
-    return (
-      <div className="space-y-2">
-        <h1 className="text-2xl font-semibold tracking-tight">Kanban</h1>
-        <p className="text-sm text-muted-foreground">
-          Keine Organisation gefunden. Bitte Seed-Skript ausführen:
-          Supabase Dashboard → SQL Editor → <code className="font-mono text-xs bg-muted px-1 py-0.5 rounded">scripts/seed.sql</code>
-        </p>
-      </div>
-    )
+    redirect('/dashboard')
   }
 
   // Alle Engagements (für Picker)
