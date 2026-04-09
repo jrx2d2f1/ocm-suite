@@ -20,7 +20,7 @@ export function Header({ user }: HeaderProps) {
   }
 
   return (
-    <header className="flex h-16 shrink-0 items-center justify-end border-b px-6 gap-3">
+    <header className="flex h-16 shrink-0 items-center justify-end border-b border-bg-mid px-6 gap-3">
       <span className="text-sm text-muted-foreground">{user.email}</span>
       <Button variant="ghost" size="sm" onClick={handleSignOut}>
         Abmelden
