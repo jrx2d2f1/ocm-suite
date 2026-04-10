@@ -590,13 +590,26 @@ export function GanttChart({ groups, initialYear, orgId, allCustomers }: Props) 
 
               // ── Milestone row — all milestones in one row, label below diamond ──
               const { milestones, indent } = row
+              const hiddenMs = milestones.filter(ms => {
+                const f = ms.due ? frac(new Date(ms.due)) : null
+                return f === null || f < -0.02 || f > 1.02
+              })
               return (
                 <div key={`ms-${row.engId}`} className="flex border-b border-white/5" style={{ height: MS_ROW_H }}>
-                  {/* Empty left label column — keeps grid alignment */}
+                  {/* Left label column — shows hidden milestone count if any */}
                   <div
-                    className="sticky left-0 z-10 shrink-0 bg-background border-r border-white/10"
+                    className="sticky left-0 z-10 shrink-0 bg-background border-r border-white/10 flex items-center justify-end pr-2"
                     style={{ width: LABEL_W }}
-                  />
+                  >
+                    {hiddenMs.length > 0 && (
+                      <span
+                        className="text-[9px] text-muted-foreground/40 tabular-nums"
+                        title={hiddenMs.map(ms => `${ms.name} (${ms.due})`).join('\n')}
+                      >
+                        +{hiddenMs.length} außerhalb
+                      </span>
+                    )}
+                  </div>
 
                   {/* Timeline — all milestones side by side */}
                   <div className="relative flex-1 overflow-hidden">
