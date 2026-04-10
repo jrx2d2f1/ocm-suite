@@ -7,6 +7,7 @@ export interface GanttMilestone {
   name: string
   due: string | null
   status: MilestoneStatus
+  color?: string | null  // phase color from canvas_phases; overrides status color when set
 }
 
 export interface GanttEngagement {

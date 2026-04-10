@@ -617,7 +617,7 @@ export function GanttChart({ groups, initialYear, orgId, allCustomers }: Props) 
                     {milestones.map(ms => {
                       const msF = ms.due ? frac(new Date(ms.due)) : null
                       if (msF === null || msF < -0.02 || msF > 1.02) return null
-                      const msColor = MS_COLOR[ms.status] ?? MS_COLOR.planned
+                      const msColor = ms.color ?? MS_COLOR[ms.status] ?? MS_COLOR.planned
                       const pct = Math.max(0, Math.min(100, msF * 100))
 
                       return (

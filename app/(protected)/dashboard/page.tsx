@@ -62,23 +62,29 @@ export default async function DashboardPage() {
   const { data: rawMilestones } = engagementIds.length
     ? await supabase
         .from('milestones')
-        .select('id, engagement_id, name, due, status')
+        .select('id, engagement_id, name, due, status, canvas_phases(color)')
         .in('engagement_id', engagementIds)
         .order('due')
     : { data: [] }
 
-  // Index milestones by engagement
-  const milestonesByEng = new Map<string, typeof rawMilestones>()
+  // Index milestones by engagement, flattening the phase color
+  const milestonesByEng = new Map<string, { id: string; name: string; due: string | null; status: string; color: string | null }[]>()
   for (const ms of rawMilestones ?? []) {
     const list = milestonesByEng.get(ms.engagement_id) ?? []
-    list.push(ms)
+    list.push({
+      id: ms.id,
+      name: ms.name,
+      due: ms.due,
+      status: ms.status,
+      color: (ms.canvas_phases as any)?.color ?? null,
+    })
     milestonesByEng.set(ms.engagement_id, list)
   }
 
   // Merge milestones into engagements
   const allEngagements = (engagements ?? []).map(e => ({
     ...e,
-    milestones: (milestonesByEng.get(e.id) ?? []) as { id: string; name: string; due: string | null; status: string }[],
+    milestones: (milestonesByEng.get(e.id) ?? []) as { id: string; name: string; due: string | null; status: string; color: string | null }[],
   }))
 
   // ── Tasks count (open = not Done) ────────────────────────────────
