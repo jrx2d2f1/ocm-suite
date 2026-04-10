@@ -1,8 +1,12 @@
 'use client'
 
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ChevronLeft } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { createClient } from '@/lib/supabase/client'
+import { TaskPanel } from '@/components/kanban/task-panel'
+import { type Task } from '@/components/kanban/types'
 
 interface CalEngagement {
   id: string
@@ -43,6 +47,8 @@ const DOW = ['Mo','Di','Mi','Do','Fr','Sa','So']
 
 export function CalendarView({ engagements, tasks, activeEngagementId, year, month }: Props) {
   const router = useRouter()
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null)
+  const [loadingId, setLoadingId] = useState<string | null>(null)
 
   function monthStr(y: number, m: number) {
     return `${y}-${String(m + 1).padStart(2, '0')}`
@@ -64,6 +70,24 @@ export function CalendarView({ engagements, tasks, activeEngagementId, year, mon
     qs.set('month', monthStr(year, month))
     if (id !== 'all') qs.set('engagement', id)
     router.push(`/kalender?${qs}`)
+  }
+
+  async function openTask(taskId: string) {
+    if (loadingId) return
+    setLoadingId(taskId)
+    const supabase = createClient()
+    const { data } = await supabase
+      .from('tasks')
+      .select('id, engagement_id, milestone_id, title, status, category, due, owner_user_id, owner_name, beschreibung, ziel, mitarbeitende, goal_id, sort_order, task_stakeholders(stakeholder_id, role_in_task, stakeholders(id, name, stakeholder_type))')
+      .eq('id', taskId)
+      .single()
+    setLoadingId(null)
+    if (data) setSelectedTask(data as unknown as Task)
+  }
+
+  function handleUpdate(updated: Task) {
+    setSelectedTask(updated)
+    router.refresh()
   }
 
   // Build task map keyed by YYYY-MM-DD
@@ -203,13 +227,17 @@ export function CalendarView({ engagements, tasks, activeEngagementId, year, mon
                 {dayTasks.slice(0, 3).map(t => {
                   const col = CATEGORY_COLOR[t.category] ?? '#8b92a8'
                   const alias = engMap[t.engagement_id] ?? ''
+                  const isLoading = loadingId === t.id
                   return (
                     <div
                       key={t.id}
-                      className="rounded px-1.5 py-0.5 cursor-pointer hover:brightness-125 transition-all"
+                      className={cn(
+                        'rounded px-1.5 py-0.5 cursor-pointer hover:brightness-125 transition-all',
+                        isLoading && 'opacity-50'
+                      )}
                       style={{ background: col + '22', borderLeft: `2px solid ${col}` }}
                       title={`${t.title}${alias ? ' · ' + alias : ''}`}
-                      onClick={() => router.push(`/kanban?engagement=${t.engagement_id}`)}
+                      onClick={() => openTask(t.id)}
                     >
                       <div className="text-[10px] font-medium truncate leading-tight" style={{ color: col }}>
                         {t.title}
@@ -232,6 +260,13 @@ export function CalendarView({ engagements, tasks, activeEngagementId, year, mon
           })}
         </div>
       </div>
+
+      {/* Task detail panel (same as Kanban) */}
+      <TaskPanel
+        task={selectedTask}
+        onClose={() => setSelectedTask(null)}
+        onUpdate={handleUpdate}
+      />
     </div>
   )
 }
