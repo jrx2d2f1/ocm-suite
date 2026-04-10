@@ -39,7 +39,7 @@ export default async function DashboardPage() {
 
   if (!membership) redirect('/dashboard')
 
-  // ── Data: customers + engagements with milestones ────────────────
+  // ── Data: customers + engagements ────────────────────────────────
   const [{ data: customers }, { data: engagements }] = await Promise.all([
     supabase
       .from('customers')
@@ -50,14 +50,39 @@ export default async function DashboardPage() {
 
     supabase
       .from('engagements')
-      .select('id, name, eng_alias, status, start_date, end_date, customer_id, milestones(id, name, due, status)')
+      .select('id, name, eng_alias, status, start_date, end_date, customer_id')
       .eq('org_id', membership.org_id)
       .is('deleted_at', null)
       .order('created_at'),
   ])
 
-  // ── Tasks count (open = not Done) ────────────────────────────────
+  // ── Milestones (separate query to apply deleted_at filter) ───────
   const engagementIds = (engagements ?? []).map(e => e.id)
+
+  const { data: rawMilestones } = engagementIds.length
+    ? await supabase
+        .from('milestones')
+        .select('id, engagement_id, name, due, status')
+        .in('engagement_id', engagementIds)
+        .is('deleted_at', null)
+        .order('due')
+    : { data: [] }
+
+  // Index milestones by engagement
+  const milestonesByEng = new Map<string, typeof rawMilestones>()
+  for (const ms of rawMilestones ?? []) {
+    const list = milestonesByEng.get(ms.engagement_id) ?? []
+    list.push(ms)
+    milestonesByEng.set(ms.engagement_id, list)
+  }
+
+  // Merge milestones into engagements
+  const allEngagements = (engagements ?? []).map(e => ({
+    ...e,
+    milestones: (milestonesByEng.get(e.id) ?? []) as { id: string; name: string; due: string | null; status: string }[],
+  }))
+
+  // ── Tasks count (open = not Done) ────────────────────────────────
   const [{ count: openTasksCount }, { count: reviewTasksCount }] = await Promise.all([
     engagementIds.length
       ? supabase
@@ -76,7 +101,6 @@ export default async function DashboardPage() {
   ])
 
   // ── Stats ────────────────────────────────────────────────────────
-  const allEngagements = engagements ?? []
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
@@ -85,7 +109,7 @@ export default async function DashboardPage() {
   )
   const activeEngCount = allEngagements.filter(e => e.status === 'active').length
 
-  const allMilestones = allEngagements.flatMap(e => (e as any).milestones ?? [])
+  const allMilestones = rawMilestones ?? []
   const overdueMilestones = allMilestones.filter(
     (ms: any) => ms.due && new Date(ms.due) < today && ms.status !== 'done'
   )
@@ -125,20 +149,10 @@ export default async function DashboardPage() {
     }
   }
 
-  // ── Initial year ─────────────────────────────────────────────────
+  // ── Initial year — default to currentYear so all this year's ─────
+  // milestones are immediately visible; user can navigate for others
   const currentYear = new Date().getFullYear()
-  const dataYears: number[] = []
-
-  for (const eng of allEngagements) {
-    if (eng.start_date) dataYears.push(parseInt(eng.start_date.split('-')[0]))
-    if (eng.end_date)   dataYears.push(parseInt(eng.end_date.split('-')[0]))
-    for (const ms of (eng as any).milestones ?? []) {
-      if (ms.due) dataYears.push(new Date(ms.due).getFullYear())
-    }
-  }
-
-  const relevantYears = dataYears.filter(y => y <= currentYear)
-  const initialYear = relevantYears.length > 0 ? Math.max(...relevantYears) : currentYear
+  const initialYear = currentYear
 
   // ── Render ──────────────────────────────────────────────────────
   return (
