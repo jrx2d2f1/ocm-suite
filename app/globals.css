@@ -48,9 +48,9 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 
   /* ── OCM CI custom colors ─────────────────────────────────── */
-  --color-bg:       #2A3740;
-  --color-bg-dark:  #1E2B32;
-  --color-bg-mid:   #3D4F5A;
+  --color-bg:       #3E5868;
+  --color-bg-dark:  #2D4452;
+  --color-bg-mid:   #4E6472;
   --color-teal:     #6DE8D8;
   --color-teal-dim: #1E5550;
   --color-ci-gray:  #D8E8F0;
@@ -60,28 +60,28 @@
 /* ── shadcn CSS-Variables — OCM CI-Palette ───────────────────── */
 :root {
   /* Surface */
-  --background:        #2A3740;
-  --foreground:        #D8E8F0;
+  --background:        #3E5868;
+  --foreground:        #E8F2F8;
 
   /* Cards / panels — glass: semi-transparent with blur support */
-  --card:              rgba(52, 68, 80, 0.55);
-  --card-foreground:   #D8E8F0;
+  --card:              rgba(72, 96, 115, 0.55);
+  --card-foreground:   #E8F2F8;
 
   /* Popovers (e.g. dropdowns) */
-  --popover:           #344450;
-  --popover-foreground: #D8E8F0;
+  --popover:           #3A5464;
+  --popover-foreground: #E8F2F8;
 
   /* Primary = Teal */
   --primary:           #6DE8D8;
   --primary-foreground: #1E2B32;
 
   /* Secondary = bg-mid */
-  --secondary:         #3D4F5A;
-  --secondary-foreground: #D8E8F0;
+  --secondary:         #4E6472;
+  --secondary-foreground: #E8F2F8;
 
   /* Muted */
-  --muted:             #3D4F5A;
-  --muted-foreground:  #9BB8C8;
+  --muted:             #4E6472;
+  --muted-foreground:  #A8C4D4;
 
   /* Accent = teal-dim (hover states) */
   --accent:            #1E5550;
@@ -91,25 +91,25 @@
   --destructive:       oklch(0.577 0.245 27.325);
 
   /* Borders / inputs — glass-style subtle separator */
-  --border:            rgba(255,255,255,0.1);
-  --input:             #3D4F5A;
+  --border:            rgba(255,255,255,0.12);
+  --input:             #4E6472;
   --ring:              #6DE8D8;
 
   /* Charts */
   --chart-1: #6DE8D8;
   --chart-2: #8AA0AC;
   --chart-3: #C5CDD3;
-  --chart-4: #3D4F5A;
+  --chart-4: #4E6472;
   --chart-5: #1E5550;
 
   --radius: 0.625rem;
 
   /* Sidebar */
-  --sidebar:                   #1E2B32;
-  --sidebar-foreground:        #D8E8F0;
+  --sidebar:                   #2D4452;
+  --sidebar-foreground:        #E8F2F8;
   --sidebar-primary:           #6DE8D8;
   --sidebar-primary-foreground: #1E2B32;
-  --sidebar-accent:            #3D4F5A;
+  --sidebar-accent:            #4E6472;
   --sidebar-accent-foreground: #6DE8D8;
   --sidebar-border:            rgba(255,255,255,0.08);
   --sidebar-ring:              #6DE8D8;
@@ -122,7 +122,7 @@
   body {
     @apply text-foreground;
     /* OCM CI body gradient — fixed so it doesn't scroll with content */
-    background: linear-gradient(135deg, #3E5264, #2F3B44, #1E2B32);
+    background: linear-gradient(135deg, #5B7A8E, #435D6E, #304A58);
     background-attachment: fixed;
     min-height: 100vh;
   }
