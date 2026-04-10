@@ -32,6 +32,14 @@ export default async function StrategyPage({
 
   const activeCustomerId = customerParam ?? customers?.[0]?.id ?? ''
 
+  // Load engagements for this org (needed for program type engagement_id select)
+  const { data: engagements } = await supabase
+    .from('engagements')
+    .select('id, name, eng_alias')
+    .eq('org_id', membership.org_id)
+    .is('deleted_at', null)
+    .order('name')
+
   // Load goals with key results for the selected customer
   const { data: rawGoals } = activeCustomerId
     ? await supabase
@@ -78,6 +86,7 @@ export default async function StrategyPage({
         customers={(customers ?? []) as StratCustomer[]}
         goals={goals}
         activeCustomerId={activeCustomerId}
+        engagements={(engagements ?? []) as any}
       />
     </div>
   )
