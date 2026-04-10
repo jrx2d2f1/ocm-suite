@@ -16,6 +16,7 @@ export interface StratGoal {
   description: string | null
   owner: string | null
   engagement_id: string | null
+  target_date: string | null  // ISO date 'YYYY-MM-DD', month precision
   sort_order: number
   key_results: KeyResult[]
   parent_ids: string[]

@@ -244,6 +244,16 @@ function GoalCard({
         </div>
       )}
 
+      {/* Target date */}
+      {goal.target_date && (
+        <div className="flex items-center gap-1.5 mt-2">
+          <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: color, opacity: 0.35 }} />
+          <span className="text-[10px] text-muted-foreground/70">
+            Ziel: {new Date(goal.target_date + 'T00:00:00').toLocaleDateString('de-DE', { month: 'short', year: 'numeric' })}
+          </span>
+        </div>
+      )}
+
       {/* Key Results */}
       {goal.key_results.length > 0 && (
         <div className="mt-2.5 pt-2.5 border-t space-y-1.5" style={{ borderColor: 'rgba(255,255,255,0.07)' }}>
@@ -333,6 +343,10 @@ function GoalModal({
   const [description, setDescription] = useState(goal?.description ?? '')
   const [owner, setOwner] = useState(goal?.owner ?? '')
   const [engagementId, setEngagementId] = useState(goal?.engagement_id ?? '')
+  // target_date stored as 'YYYY-MM-DD', month picker needs 'YYYY-MM'
+  const [targetMonth, setTargetMonth] = useState(
+    goal?.target_date ? goal.target_date.slice(0, 7) : ''
+  )
   const [parentIds, setParentIds] = useState<Set<string>>(new Set(goal?.parent_ids ?? []))
   const [krs, setKrs] = useState<KRDraft[]>(
     goal?.key_results.map(kr => ({ text: kr.text, current_value: kr.current_value, target_value: kr.target_value })) ?? []
@@ -378,6 +392,7 @@ function GoalModal({
           description: description.trim() || null,
           owner: owner.trim() || null,
           engagement_id: type === 'program' ? (engagementId || null) : null,
+          target_date: targetMonth ? `${targetMonth}-01` : null,
         })
         await updateGoalParents(goalId, Array.from(parentIds))
         await upsertKeyResults(goalId, krs.filter(kr => kr.text.trim()))
@@ -459,6 +474,19 @@ function GoalModal({
               value={owner}
               onChange={e => setOwner(e.target.value)}
               placeholder="Name, Rolle…"
+            />
+          </div>
+
+          {/* Target date (month + year) */}
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">
+              Zieldatum
+            </label>
+            <input
+              type="month"
+              value={targetMonth}
+              onChange={e => setTargetMonth(e.target.value)}
+              className={inputCls}
             />
           </div>
 

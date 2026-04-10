@@ -11,6 +11,7 @@ export async function upsertGoal(data: {
   description?: string | null
   owner?: string | null
   engagement_id?: string | null
+  target_date?: string | null
 }): Promise<string> {
   const supabase = await createClient()
 
@@ -22,6 +23,7 @@ export async function upsertGoal(data: {
         description: data.description ?? null,
         owner: data.owner ?? null,
         engagement_id: data.engagement_id ?? null,
+        target_date: data.target_date ?? null,
       })
       .eq('id', data.id)
 
@@ -47,6 +49,7 @@ export async function upsertGoal(data: {
       description: data.description ?? null,
       owner: data.owner ?? null,
       engagement_id: data.engagement_id ?? null,
+      target_date: data.target_date ?? null,
       sort_order: (count ?? 0) + 1,
     })
     .select('id')

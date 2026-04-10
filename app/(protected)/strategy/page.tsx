@@ -44,7 +44,7 @@ export default async function StrategyPage({
   const { data: rawGoals } = activeCustomerId
     ? await supabase
         .from('strategy_goals')
-        .select('id, type, title, description, owner, engagement_id, sort_order, key_results(id, goal_id, text, current_value, target_value, sort_order)')
+        .select('id, type, title, description, owner, engagement_id, target_date, sort_order, key_results(id, goal_id, text, current_value, target_value, sort_order)')
         .eq('customer_id', activeCustomerId)
         .is('deleted_at', null)
         .order('sort_order')
@@ -74,6 +74,7 @@ export default async function StrategyPage({
     description: g.description,
     owner: g.owner,
     engagement_id: g.engagement_id,
+    target_date: g.target_date ?? null,
     sort_order: g.sort_order,
     key_results: ((g.key_results as any[]) ?? []).sort((a, b) => a.sort_order - b.sort_order),
     parent_ids: parentMap[g.id] ?? [],
