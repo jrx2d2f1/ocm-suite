@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ChevronLeft } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { FilterSelect } from '@/components/ui/filter-select'
 import { createClient } from '@/lib/supabase/client'
 import { TaskPanel } from '@/components/kanban/task-panel'
 import { type Task } from '@/components/kanban/types'
@@ -85,12 +86,11 @@ export function CalendarView({ customers, engagements, tasks, activeCustomerId, 
   }
 
   function selectCustomer(id: string) {
-    // Reset engagement when customer changes
-    router.push(`/kalender?${buildQs({ customer: id, engagement: 'all' })}`)
+    router.push(`/kalender?${buildQs({ customer: id, engagement: 'all' })}`, { scroll: false })
   }
 
   function selectEngagement(id: string) {
-    router.push(`/kalender?${buildQs({ engagement: id })}`)
+    router.push(`/kalender?${buildQs({ engagement: id })}`, { scroll: false })
   }
 
   // Engagements visible in dropdown — filtered by active customer
@@ -180,27 +180,19 @@ export function CalendarView({ customers, engagements, tasks, activeCustomerId, 
 
         <div className="h-4 border-l border-white/10" />
 
-        <select
-          value={activeCustomerId}
-          onChange={e => selectCustomer(e.target.value)}
-          className="rounded-lg border border-white/10 bg-muted/50 px-3 py-2 text-sm font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-white/30 cursor-pointer hover:bg-muted/70 transition-colors"
-        >
+        <FilterSelect value={activeCustomerId} onChange={selectCustomer}>
           <option value="all">Alle Kunden</option>
           {customers.map(c => (
             <option key={c.id} value={c.id}>{c.name}</option>
           ))}
-        </select>
+        </FilterSelect>
 
-        <select
-          value={activeEngagementId}
-          onChange={e => selectEngagement(e.target.value)}
-          className="rounded-lg border border-white/10 bg-muted/50 px-3 py-2 text-sm font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-white/30 cursor-pointer hover:bg-muted/70 transition-colors"
-        >
+        <FilterSelect value={activeEngagementId} onChange={selectEngagement}>
           <option value="all">Alle Initiativen</option>
           {visibleEngagements.map(e => (
             <option key={e.id} value={e.id}>{e.eng_alias ?? e.name}</option>
           ))}
-        </select>
+        </FilterSelect>
       </div>
 
       {/* Calendar grid */}

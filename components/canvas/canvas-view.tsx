@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { ChevronRight, Pencil, Plus, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { FilterSelect } from '@/components/ui/filter-select'
 import { saveCanvas } from '@/lib/actions/canvas'
 
 // ── Types ─────────────────────────────────────────────────────────
@@ -197,7 +198,7 @@ export function CanvasView({
 
   function handleCustomerChange(customerId: string) {
     const first = engagements.find(e => e.customer_id === customerId)
-    if (first) router.push(`/canvas?engagement=${first.id}`)
+    if (first) router.push(`/canvas?engagement=${first.id}`, { scroll: false })
   }
 
   // ── Edit mode ─────────────────────────────────────────────────
@@ -327,11 +328,7 @@ export function CanvasView({
       {/* Cascading filter: Kunde → Initiative */}
       <div className="flex items-center gap-2 flex-wrap pb-4 border-b border-white/10">
         {/* Customer select */}
-        <select
-          value={activeCustomerId}
-          onChange={e => handleCustomerChange(e.target.value)}
-          className="rounded-lg border border-white/10 bg-muted/50 px-3 py-2 text-sm font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-white/30 cursor-pointer hover:bg-muted/70 transition-colors"
-        >
+        <FilterSelect value={activeCustomerId} onChange={handleCustomerChange}>
           {parents.map(parent => {
             const children = (childrenByParent[parent.id] ?? []).filter(c =>
               engagements.some(e => e.customer_id === c.id)
@@ -352,22 +349,21 @@ export function CanvasView({
               </optgroup>
             )
           })}
-        </select>
+        </FilterSelect>
 
         <ChevronRight className="h-4 w-4 text-muted-foreground/40 shrink-0" />
 
         {/* Engagement select */}
-        <select
+        <FilterSelect
           value={activeEngagementId}
-          onChange={e => router.push(`/canvas?engagement=${e.target.value}`)}
-          className="rounded-lg border border-white/10 bg-muted/50 px-3 py-2 text-sm font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-white/30 cursor-pointer hover:bg-muted/70 transition-colors"
+          onChange={id => router.push(`/canvas?engagement=${id}`, { scroll: false })}
         >
           {customerEngagements.map(eng => (
             <option key={eng.id} value={eng.id}>
               {eng.eng_alias ?? eng.name}
             </option>
           ))}
-        </select>
+        </FilterSelect>
 
         {/* Status badge */}
         {activeEngagement && (

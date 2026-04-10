@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { X, Trash2, Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { FilterSelect } from '@/components/ui/filter-select'
 import {
   type StratGoal,
   type StratCustomer,
@@ -53,7 +54,7 @@ export function StratMapView({ customers, goals, activeCustomerId, engagements }
   const [modal, setModal] = useState<ModalState>({ open: false, type: 'strategic', goal: null })
 
   function selectCustomer(id: string) {
-    router.push(`/strategy?customer=${id}`)
+    router.push(`/strategy?customer=${id}`, { scroll: false })
   }
 
   function openCreate(type: GoalType) {
@@ -86,15 +87,11 @@ export function StratMapView({ customers, goals, activeCustomerId, engagements }
 
       {/* Toolbar */}
       <div className="flex items-center gap-3 shrink-0 flex-wrap">
-        <select
-          value={activeCustomerId}
-          onChange={e => selectCustomer(e.target.value)}
-          className="rounded-lg border border-white/10 bg-muted/50 px-3 py-2 text-sm font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-white/30 cursor-pointer hover:bg-muted/70 transition-colors"
-        >
+        <FilterSelect value={activeCustomerId} onChange={selectCustomer}>
           {customers.map(c => (
             <option key={c.id} value={c.id}>{c.name}</option>
           ))}
-        </select>
+        </FilterSelect>
         {goals.length === 0 && (
           <span className="ml-auto text-xs text-muted-foreground">Keine Ziele vorhanden.</span>
         )}

@@ -6,6 +6,7 @@ import { X, Trash2, Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
+import { FilterSelect } from '@/components/ui/filter-select'
 import {
   type MatrixStakeholder,
   type MatrixRelationship,
@@ -928,26 +929,18 @@ export function MatrixView({ customers, engagements, initialEngagementId }: Prop
 
       {/* Toolbar */}
       <div className="flex items-center gap-3 shrink-0 flex-wrap">
-        <select
-          value={custId}
-          onChange={e => selectCustomer(e.target.value)}
-          className="rounded-lg border border-white/10 bg-muted/50 px-3 py-2 text-sm font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-white/30 cursor-pointer hover:bg-muted/70 transition-colors"
-        >
+        <FilterSelect value={custId} onChange={selectCustomer}>
           <option value="all">Alle Kunden</option>
           {customers.map(c => (
             <option key={c.id} value={c.id}>{c.name}</option>
           ))}
-        </select>
+        </FilterSelect>
 
-        <select
-          value={engId}
-          onChange={e => selectEngagement(e.target.value)}
-          className="rounded-lg border border-white/10 bg-muted/50 px-3 py-2 text-sm font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-white/30 cursor-pointer hover:bg-muted/70 transition-colors"
-        >
+        <FilterSelect value={engId} onChange={selectEngagement}>
           {(custId === 'all' ? engagements : engagements.filter(e => e.customer_id === custId)).map(e => (
             <option key={e.id} value={e.id}>{e.eng_alias ?? e.name}</option>
           ))}
-        </select>
+        </FilterSelect>
 
         {/* Action buttons */}
         {engId && !loading && (

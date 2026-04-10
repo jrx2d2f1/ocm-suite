@@ -13,6 +13,7 @@ import {
 } from '@dnd-kit/core'
 import { useDroppable } from '@dnd-kit/core'
 import { cn } from '@/lib/utils'
+import { FilterSelect } from '@/components/ui/filter-select'
 import { updateTaskStatus } from '@/lib/actions/tasks'
 import { TaskCard } from './task-card'
 import { TaskPanel } from './task-panel'
@@ -146,7 +147,7 @@ export function KanbanBoard({
   )
 
   function selectCustomer(customerId: string) {
-    router.push(customerId === 'all' ? '/kanban' : `/kanban?customer=${customerId}`)
+    router.push(customerId === 'all' ? '/kanban' : `/kanban?customer=${customerId}`, { scroll: false })
   }
 
   function selectEngagement(engId: string) {
@@ -154,7 +155,7 @@ export function KanbanBoard({
     if (activeCustomerId !== 'all') params.set('customer', activeCustomerId)
     if (engId !== 'all') params.set('engagement', engId)
     const qs = params.toString()
-    router.push(qs ? `/kanban?${qs}` : '/kanban')
+    router.push(qs ? `/kanban?${qs}` : '/kanban', { scroll: false })
   }
 
   function handleDragStart({ active }: DragStartEvent) {
@@ -194,27 +195,19 @@ export function KanbanBoard({
 
       {/* ── Filter ── */}
       <div className="flex items-center gap-2 shrink-0 flex-wrap">
-        <select
-          value={activeCustomerId}
-          onChange={e => selectCustomer(e.target.value)}
-          className="rounded-lg border border-white/10 bg-muted/50 px-3 py-2 text-sm font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-white/30 cursor-pointer hover:bg-muted/70 transition-colors"
-        >
+        <FilterSelect value={activeCustomerId} onChange={selectCustomer}>
           <option value="all">Alle Kunden</option>
           {customers.map(c => (
             <option key={c.id} value={c.id}>{c.name}</option>
           ))}
-        </select>
+        </FilterSelect>
 
-        <select
-          value={activeEngagementId}
-          onChange={e => selectEngagement(e.target.value)}
-          className="rounded-lg border border-white/10 bg-muted/50 px-3 py-2 text-sm font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-white/30 cursor-pointer hover:bg-muted/70 transition-colors"
-        >
+        <FilterSelect value={activeEngagementId} onChange={selectEngagement}>
           <option value="all">Alle Initiativen</option>
           {visibleEngagements.map(e => (
             <option key={e.id} value={e.id}>{e.eng_alias ?? e.name}</option>
           ))}
-        </select>
+        </FilterSelect>
 
         <span className="ml-auto text-sm text-muted-foreground">{tasks.length} Tasks</span>
       </div>
