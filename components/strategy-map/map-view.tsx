@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { X, Trash2, Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
 import {
   type StratGoal,
   type StratCustomer,
@@ -420,16 +421,23 @@ function GoalModal({
     : colDef.label.replace(/e$/, '') + ' erstellen'
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
-      onClick={e => { if (e.target === e.currentTarget) onClose() }}
-    >
-      <div className="bg-zinc-900 border border-white/10 rounded-2xl w-full max-w-xl max-h-[90vh] flex flex-col shadow-2xl">
+    <>
+      {/* Backdrop */}
+      <div className="fixed inset-0 z-30 bg-black/30 backdrop-blur-[2px]" onClick={onClose} />
+
+      {/* Slide-over panel */}
+      <div className={cn(
+        'fixed right-0 top-0 z-40 flex h-screen w-[480px] flex-col',
+        'border-l border-white/10 bg-background/90 backdrop-blur-xl',
+        'shadow-[-8px_0_32px_rgba(0,0,0,0.3)]',
+      )}>
         {/* Header */}
-        <div className="flex items-center gap-3 px-5 py-4 border-b border-white/10 shrink-0">
-          <span className="w-2 h-2 rounded-full shrink-0" style={{ background: color }} />
-          <h2 className="text-sm font-semibold flex-1">{modalTitle}</h2>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
+        <div className="flex items-center justify-between border-b border-white/10 px-5 py-4 bg-white/[0.03] shrink-0">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full shrink-0" style={{ background: color }} />
+            <h2 className="text-sm font-semibold">{modalTitle}</h2>
+          </div>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors p-1">
             <X size={16} />
           </button>
         </div>
@@ -598,7 +606,7 @@ function GoalModal({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center gap-2 px-5 py-4 border-t border-white/10 shrink-0">
+        <div className="border-t border-white/10 px-5 py-3 flex gap-2 bg-white/[0.02] shrink-0">
           {isEdit && (
             <button
               onClick={handleDelete}
@@ -609,22 +617,14 @@ function GoalModal({
               Ziel löschen
             </button>
           )}
-          <button
-            onClick={onClose}
-            disabled={isPending}
-            className="ml-auto px-3.5 py-2 rounded-lg text-xs bg-white/5 text-muted-foreground hover:bg-white/10 hover:text-foreground transition-colors disabled:opacity-50"
-          >
+          <Button variant="ghost" onClick={onClose} disabled={isPending} className="ml-auto hover:bg-white/10">
             Abbrechen
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={isPending || !title.trim()}
-            className="px-4 py-2 rounded-lg text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
-          >
+          </Button>
+          <Button onClick={handleSave} disabled={isPending || !title.trim()} className="bg-primary/90 hover:bg-primary">
             {isPending ? 'Wird gespeichert…' : 'Speichern'}
-          </button>
+          </Button>
         </div>
       </div>
-    </div>
+    </>
   )
 }
