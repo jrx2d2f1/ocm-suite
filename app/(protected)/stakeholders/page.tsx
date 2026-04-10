@@ -21,12 +21,20 @@ export default async function StakeholdersPage({
 
   if (!membership) redirect('/dashboard')
 
-  const { data: engagements } = await supabase
-    .from('engagements')
-    .select('id, name, eng_alias, status, customer_id')
-    .eq('org_id', membership.org_id)
-    .is('deleted_at', null)
-    .order('name')
+  const [{ data: customers }, { data: engagements }] = await Promise.all([
+    supabase
+      .from('customers')
+      .select('id, name, parent_id')
+      .eq('org_id', membership.org_id)
+      .is('deleted_at', null)
+      .order('name'),
+    supabase
+      .from('engagements')
+      .select('id, name, eng_alias, status, customer_id')
+      .eq('org_id', membership.org_id)
+      .is('deleted_at', null)
+      .order('name'),
+  ])
 
   const initialEngagementId = engagementParam ?? engagements?.[0]?.id ?? ''
 
@@ -34,6 +42,7 @@ export default async function StakeholdersPage({
     <div className="flex flex-col gap-4 h-full">
       <h1 className="text-2xl font-semibold tracking-tight shrink-0">Power / Interest-Matrix</h1>
       <MatrixView
+        customers={(customers ?? []) as any}
         engagements={(engagements ?? []) as any}
         initialEngagementId={initialEngagementId}
       />

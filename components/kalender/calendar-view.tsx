@@ -8,10 +8,17 @@ import { createClient } from '@/lib/supabase/client'
 import { TaskPanel } from '@/components/kanban/task-panel'
 import { type Task } from '@/components/kanban/types'
 
+interface CalCustomer {
+  id: string
+  name: string
+  parent_id: string | null
+}
+
 interface CalEngagement {
   id: string
   name: string
   eng_alias: string | null
+  customer_id: string
 }
 
 interface CalTask {
@@ -23,8 +30,10 @@ interface CalTask {
 }
 
 interface Props {
+  customers: CalCustomer[]
   engagements: CalEngagement[]
   tasks: CalTask[]
+  activeCustomerId: string
   activeEngagementId: string
   year: number
   month: number // 0-indexed
@@ -45,13 +54,22 @@ const MONTHS_DE = [
 ]
 const DOW = ['Mo','Di','Mi','Do','Fr','Sa','So']
 
-export function CalendarView({ engagements, tasks, activeEngagementId, year, month }: Props) {
+export function CalendarView({ customers, engagements, tasks, activeCustomerId, activeEngagementId, year, month }: Props) {
   const router = useRouter()
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [loadingId, setLoadingId] = useState<string | null>(null)
 
   function monthStr(y: number, m: number) {
     return `${y}-${String(m + 1).padStart(2, '0')}`
+  }
+
+  function buildQs(overrides: Record<string, string>) {
+    const qs = new URLSearchParams()
+    qs.set('month', monthStr(year, month))
+    if (activeCustomerId !== 'all') qs.set('customer', activeCustomerId)
+    if (activeEngagementId !== 'all') qs.set('engagement', activeEngagementId)
+    Object.entries(overrides).forEach(([k, v]) => v === 'all' ? qs.delete(k) : qs.set(k, v))
+    return qs.toString()
   }
 
   function navigate(delta: number) {
@@ -61,16 +79,24 @@ export function CalendarView({ engagements, tasks, activeEngagementId, year, mon
     if (m > 11) { m = 0; y++ }
     const qs = new URLSearchParams()
     qs.set('month', monthStr(y, m))
+    if (activeCustomerId !== 'all') qs.set('customer', activeCustomerId)
     if (activeEngagementId !== 'all') qs.set('engagement', activeEngagementId)
     router.push(`/kalender?${qs}`)
   }
 
-  function selectEngagement(id: string) {
-    const qs = new URLSearchParams()
-    qs.set('month', monthStr(year, month))
-    if (id !== 'all') qs.set('engagement', id)
-    router.push(`/kalender?${qs}`)
+  function selectCustomer(id: string) {
+    // Reset engagement when customer changes
+    router.push(`/kalender?${buildQs({ customer: id, engagement: 'all' })}`)
   }
+
+  function selectEngagement(id: string) {
+    router.push(`/kalender?${buildQs({ engagement: id })}`)
+  }
+
+  // Engagements visible in dropdown — filtered by active customer
+  const visibleEngagements = activeCustomerId === 'all'
+    ? engagements
+    : engagements.filter(e => e.customer_id === activeCustomerId)
 
   async function openTask(taskId: string) {
     if (loadingId) return
@@ -155,12 +181,23 @@ export function CalendarView({ engagements, tasks, activeEngagementId, year, mon
         <div className="h-4 border-l border-white/10" />
 
         <select
+          value={activeCustomerId}
+          onChange={e => selectCustomer(e.target.value)}
+          className="rounded-lg border border-white/10 bg-muted/50 px-3 py-2 text-sm font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-white/30 cursor-pointer hover:bg-muted/70 transition-colors"
+        >
+          <option value="all">Alle Kunden</option>
+          {customers.map(c => (
+            <option key={c.id} value={c.id}>{c.name}</option>
+          ))}
+        </select>
+
+        <select
           value={activeEngagementId}
           onChange={e => selectEngagement(e.target.value)}
           className="rounded-lg border border-white/10 bg-muted/50 px-3 py-2 text-sm font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-white/30 cursor-pointer hover:bg-muted/70 transition-colors"
         >
           <option value="all">Alle Initiativen</option>
-          {engagements.map(e => (
+          {visibleEngagements.map(e => (
             <option key={e.id} value={e.id}>{e.eng_alias ?? e.name}</option>
           ))}
         </select>

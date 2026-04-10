@@ -5,9 +5,9 @@ import { CalendarView } from '@/components/kalender/calendar-view'
 export default async function KalenderPage({
   searchParams,
 }: {
-  searchParams: Promise<{ month?: string; engagement?: string }>
+  searchParams: Promise<{ month?: string; engagement?: string; customer?: string }>
 }) {
-  const { month: monthParam, engagement: engagementParam } = await searchParams
+  const { month: monthParam, engagement: engagementParam, customer: customerParam } = await searchParams
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -21,15 +21,28 @@ export default async function KalenderPage({
 
   if (!membership) redirect('/dashboard')
 
-  const { data: engagements } = await supabase
-    .from('engagements')
-    .select('id, name, eng_alias')
-    .eq('org_id', membership.org_id)
-    .is('deleted_at', null)
-    .order('name')
+  const [{ data: customers }, { data: engagements }] = await Promise.all([
+    supabase
+      .from('customers')
+      .select('id, name, parent_id')
+      .eq('org_id', membership.org_id)
+      .is('deleted_at', null)
+      .order('name'),
+    supabase
+      .from('engagements')
+      .select('id, name, eng_alias, customer_id')
+      .eq('org_id', membership.org_id)
+      .is('deleted_at', null)
+      .order('name'),
+  ])
 
-  const allIds = (engagements ?? []).map(e => e.id)
+  const activeCustomerId = customerParam && customerParam !== 'all' ? customerParam : 'all'
   const activeEngagementId = engagementParam && engagementParam !== 'all' ? engagementParam : 'all'
+
+  const engsByCustomer = activeCustomerId !== 'all'
+    ? (engagements ?? []).filter(e => e.customer_id === activeCustomerId).map(e => e.id)
+    : (engagements ?? []).map(e => e.id)
+  const allIds = engsByCustomer
   const targetIds = activeEngagementId !== 'all' ? [activeEngagementId] : allIds
 
   const { data: tasks } = targetIds.length
@@ -58,8 +71,10 @@ export default async function KalenderPage({
     <div className="flex flex-col gap-4 h-full">
       <h1 className="text-2xl font-semibold tracking-tight shrink-0">Kalender</h1>
       <CalendarView
+        customers={(customers ?? []) as any}
         engagements={(engagements ?? []) as any}
         tasks={(tasks ?? []) as any}
+        activeCustomerId={activeCustomerId}
         activeEngagementId={activeEngagementId}
         year={year}
         month={month}

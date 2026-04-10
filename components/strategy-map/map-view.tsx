@@ -86,23 +86,15 @@ export function StratMapView({ customers, goals, activeCustomerId, engagements }
 
       {/* Toolbar */}
       <div className="flex items-center gap-3 shrink-0 flex-wrap">
-        <span className="text-xs text-muted-foreground">Unternehmen:</span>
-        <div className="flex items-center gap-1.5 flex-wrap">
+        <select
+          value={activeCustomerId}
+          onChange={e => selectCustomer(e.target.value)}
+          className="rounded-lg border border-white/10 bg-muted/50 px-3 py-2 text-sm font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-white/30 cursor-pointer hover:bg-muted/70 transition-colors"
+        >
           {customers.map(c => (
-            <button
-              key={c.id}
-              onClick={() => selectCustomer(c.id)}
-              className={cn(
-                'px-2.5 py-1 rounded text-xs font-medium transition-colors',
-                activeCustomerId === c.id
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground'
-              )}
-            >
-              {c.name}
-            </button>
+            <option key={c.id} value={c.id}>{c.name}</option>
           ))}
-        </div>
+        </select>
         {goals.length === 0 && (
           <span className="ml-auto text-xs text-muted-foreground">Keine Ziele vorhanden.</span>
         )}

@@ -19,6 +19,12 @@ import {
   REL_DASH,
 } from './types'
 
+interface Customer {
+  id: string
+  name: string
+  parent_id: string | null
+}
+
 interface Engagement {
   id: string
   name: string
@@ -27,6 +33,7 @@ interface Engagement {
 }
 
 interface Props {
+  customers: Customer[]
   engagements: Engagement[]
   initialEngagementId: string
 }
@@ -773,9 +780,11 @@ function StakeholderPanel({
 }
 
 // ── Main MatrixView ───────────────────────────────────────────────
-export function MatrixView({ engagements, initialEngagementId }: Props) {
+export function MatrixView({ customers, engagements, initialEngagementId }: Props) {
   const router = useRouter()
   const [engId, setEngId] = useState(initialEngagementId)
+  const initialCustomer = engagements.find(e => e.id === initialEngagementId)?.customer_id ?? 'all'
+  const [custId, setCustId] = useState(initialCustomer)
   const [stakeholders, setStakeholders] = useState<MatrixStakeholder[]>([])
   const [relationships, setRelationships] = useState<MatrixRelationship[]>([])
   const [loading, setLoading] = useState(false)
@@ -850,6 +859,15 @@ export function MatrixView({ engagements, initialEngagementId }: Props) {
     })
   }, [engId])
 
+  function selectCustomer(id: string) {
+    setCustId(id)
+    // Auto-select first engagement of this customer, or keep current if it belongs to new customer
+    const engsForCust = id === 'all' ? engagements : engagements.filter(e => e.customer_id === id)
+    const keep = engsForCust.find(e => e.id === engId)
+    const next = keep ?? engsForCust[0]
+    if (next && next.id !== engId) selectEngagement(next.id)
+  }
+
   function selectEngagement(id: string) {
     setEngId(id)
     setRelPanelOpen(false)
@@ -911,11 +929,22 @@ export function MatrixView({ engagements, initialEngagementId }: Props) {
       {/* Toolbar */}
       <div className="flex items-center gap-3 shrink-0 flex-wrap">
         <select
+          value={custId}
+          onChange={e => selectCustomer(e.target.value)}
+          className="rounded-lg border border-white/10 bg-muted/50 px-3 py-2 text-sm font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-white/30 cursor-pointer hover:bg-muted/70 transition-colors"
+        >
+          <option value="all">Alle Kunden</option>
+          {customers.map(c => (
+            <option key={c.id} value={c.id}>{c.name}</option>
+          ))}
+        </select>
+
+        <select
           value={engId}
           onChange={e => selectEngagement(e.target.value)}
           className="rounded-lg border border-white/10 bg-muted/50 px-3 py-2 text-sm font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-white/30 cursor-pointer hover:bg-muted/70 transition-colors"
         >
-          {engagements.map(e => (
+          {(custId === 'all' ? engagements : engagements.filter(e => e.customer_id === custId)).map(e => (
             <option key={e.id} value={e.id}>{e.eng_alias ?? e.name}</option>
           ))}
         </select>
