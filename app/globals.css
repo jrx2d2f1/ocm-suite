@@ -63,8 +63,8 @@
   --background:        #2A3740;
   --foreground:        #D8E8F0;
 
-  /* Cards / panels — slightly lighter than background for elevation */
-  --card:              #344450;
+  /* Cards / panels — glass: semi-transparent with blur support */
+  --card:              rgba(52, 68, 80, 0.55);
   --card-foreground:   #D8E8F0;
 
   /* Popovers (e.g. dropdowns) */
@@ -129,4 +129,10 @@
   html {
     @apply font-sans;
   }
+
+  /* Minimal scrollbar */
+  ::-webkit-scrollbar       { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 99px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.22); }
 }
