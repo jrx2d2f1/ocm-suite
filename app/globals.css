@@ -48,9 +48,9 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 
   /* ── OCM CI custom colors ─────────────────────────────────── */
-  --color-bg:       #3E5868;
-  --color-bg-dark:  #2D4452;
-  --color-bg-mid:   #4E6472;
+  --color-bg:       #243652;
+  --color-bg-dark:  #1A2640;
+  --color-bg-mid:   #334060;
   --color-teal:     #6DE8D8;
   --color-teal-dim: #1E5550;
   --color-ci-gray:  #D8E8F0;
@@ -60,28 +60,28 @@
 /* ── shadcn CSS-Variables — OCM CI-Palette ───────────────────── */
 :root {
   /* Surface */
-  --background:        #3E5868;
-  --foreground:        #E8F2F8;
+  --background:        #243652;
+  --foreground:        #D8E8F0;
 
   /* Cards / panels — glass: semi-transparent with blur support */
-  --card:              rgba(72, 96, 115, 0.55);
-  --card-foreground:   #E8F2F8;
+  --card:              rgba(42, 62, 88, 0.55);
+  --card-foreground:   #D8E8F0;
 
   /* Popovers (e.g. dropdowns) */
-  --popover:           #3A5464;
-  --popover-foreground: #E8F2F8;
+  --popover:           #1F3050;
+  --popover-foreground: #D8E8F0;
 
   /* Primary = Teal */
   --primary:           #6DE8D8;
-  --primary-foreground: #1E2B32;
+  --primary-foreground: #1A2640;
 
   /* Secondary = bg-mid */
-  --secondary:         #4E6472;
-  --secondary-foreground: #E8F2F8;
+  --secondary:         #334060;
+  --secondary-foreground: #D8E8F0;
 
   /* Muted */
-  --muted:             #4E6472;
-  --muted-foreground:  #A8C4D4;
+  --muted:             #334060;
+  --muted-foreground:  #9BB8C8;
 
   /* Accent = teal-dim (hover states) */
   --accent:            #1E5550;
@@ -91,25 +91,25 @@
   --destructive:       oklch(0.577 0.245 27.325);
 
   /* Borders / inputs — glass-style subtle separator */
-  --border:            rgba(255,255,255,0.12);
-  --input:             #4E6472;
+  --border:            rgba(255,255,255,0.1);
+  --input:             #334060;
   --ring:              #6DE8D8;
 
   /* Charts */
   --chart-1: #6DE8D8;
   --chart-2: #8AA0AC;
   --chart-3: #C5CDD3;
-  --chart-4: #4E6472;
+  --chart-4: #334060;
   --chart-5: #1E5550;
 
   --radius: 0.625rem;
 
   /* Sidebar */
-  --sidebar:                   #2D4452;
-  --sidebar-foreground:        #E8F2F8;
+  --sidebar:                   #1A2640;
+  --sidebar-foreground:        #D8E8F0;
   --sidebar-primary:           #6DE8D8;
-  --sidebar-primary-foreground: #1E2B32;
-  --sidebar-accent:            #4E6472;
+  --sidebar-primary-foreground: #1A2640;
+  --sidebar-accent:            #334060;
   --sidebar-accent-foreground: #6DE8D8;
   --sidebar-border:            rgba(255,255,255,0.08);
   --sidebar-ring:              #6DE8D8;
@@ -122,7 +122,7 @@
   body {
     @apply text-foreground;
     /* OCM CI body gradient — fixed so it doesn't scroll with content */
-    background: linear-gradient(135deg, #5B7A8E, #435D6E, #304A58);
+    background: linear-gradient(135deg, #354E72, #283D5C, #1A2640);
     background-attachment: fixed;
     min-height: 100vh;
   }
