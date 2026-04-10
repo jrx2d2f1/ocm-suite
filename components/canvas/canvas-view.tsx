@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useEffect, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { Pencil, Plus, X } from 'lucide-react'
+import { ChevronRight, Pencil, Plus, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { saveCanvas } from '@/lib/actions/canvas'
@@ -324,54 +324,65 @@ export function CanvasView({
         )}
       </div>
 
-      {/* Customer pills + engagement pills */}
-      <div className="space-y-2 pb-4 border-b">
-        <div className="flex gap-1.5 flex-wrap">
-          {customersWithEngagements.map(c => {
-            const isActive = c.id === activeCustomerId
-            const isChild = !!c.parent_id
+      {/* Cascading filter: Kunde → Initiative */}
+      <div className="flex items-center gap-2 flex-wrap pb-4 border-b border-white/10">
+        {/* Customer select */}
+        <select
+          value={activeCustomerId}
+          onChange={e => handleCustomerChange(e.target.value)}
+          className="rounded-lg border border-white/10 bg-muted/50 px-3 py-2 text-sm font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-white/30 cursor-pointer hover:bg-muted/70 transition-colors"
+        >
+          {parents.map(parent => {
+            const children = (childrenByParent[parent.id] ?? []).filter(c =>
+              engagements.some(e => e.customer_id === c.id)
+            )
+            const parentHasEng = engagements.some(e => e.customer_id === parent.id)
+            if (!parentHasEng && children.length === 0) return null
+            if (children.length === 0) {
+              return <option key={parent.id} value={parent.id}>{parent.name}</option>
+            }
             return (
-              <button
-                key={c.id}
-                onClick={() => handleCustomerChange(c.id)}
-                className={cn(
-                  'px-3 py-1 rounded-full text-sm font-medium transition-colors',
-                  isChild && 'ml-2',
-                  isActive
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground'
+              <optgroup key={parent.id} label={parent.name}>
+                {parentHasEng && (
+                  <option value={parent.id}>{parent.name} (Gruppe)</option>
                 )}
-              >
-                {c.name}
-              </button>
+                {children.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </optgroup>
             )
           })}
-        </div>
+        </select>
 
-        <div className="flex gap-1.5 flex-wrap">
-          {customerEngagements.map(eng => {
-            const isActive = eng.id === activeEngagementId
-            const dotColor =
-              eng.status === 'active' ? 'bg-emerald-400' :
-              eng.status === 'hold'   ? 'bg-amber-400'   :
-              'bg-zinc-500'
-            return (
-              <button
-                key={eng.id}
-                onClick={() => router.push(`/canvas?engagement=${eng.id}`)}
-                className={cn(
-                  'flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium transition-colors',
-                  isActive
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground'
-                )}
-              >
-                {!isActive && <span className={cn('inline-block w-1.5 h-1.5 rounded-full shrink-0', dotColor)} />}
-                {eng.eng_alias ?? eng.name}
-              </button>
-            )
-          })}
-        </div>
+        <ChevronRight className="h-4 w-4 text-muted-foreground/40 shrink-0" />
+
+        {/* Engagement select */}
+        <select
+          value={activeEngagementId}
+          onChange={e => router.push(`/canvas?engagement=${e.target.value}`)}
+          className="rounded-lg border border-white/10 bg-muted/50 px-3 py-2 text-sm font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-white/30 cursor-pointer hover:bg-muted/70 transition-colors"
+        >
+          {customerEngagements.map(eng => (
+            <option key={eng.id} value={eng.id}>
+              {eng.eng_alias ?? eng.name}
+            </option>
+          ))}
+        </select>
+
+        {/* Status badge */}
+        {activeEngagement && (
+          <span className={cn(
+            'text-xs px-2.5 py-1 rounded-full font-medium',
+            activeEngagement.status === 'active' ? 'bg-emerald-500/15 text-emerald-400' :
+            activeEngagement.status === 'hold'   ? 'bg-amber-500/15 text-amber-400' :
+            activeEngagement.status === 'draft'  ? 'bg-zinc-500/20 text-zinc-400' :
+                                                   'bg-zinc-500/20 text-zinc-400'
+          )}>
+            {activeEngagement.status === 'active' ? 'Aktiv' :
+             activeEngagement.status === 'hold'   ? 'On Hold' :
+             activeEngagement.status === 'draft'  ? 'Entwurf' : 'Abgeschlossen'}
+          </span>
+        )}
       </div>
 
       {/* No canvas */}
