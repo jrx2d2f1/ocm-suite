@@ -154,33 +154,16 @@ export function CalendarView({ engagements, tasks, activeEngagementId, year, mon
 
         <div className="h-4 border-l border-white/10" />
 
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <button
-            onClick={() => selectEngagement('all')}
-            className={cn(
-              'px-2.5 py-1 rounded text-xs font-medium transition-colors',
-              activeEngagementId === 'all'
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground'
-            )}
-          >
-            Alle
-          </button>
+        <select
+          value={activeEngagementId}
+          onChange={e => selectEngagement(e.target.value)}
+          className="rounded-lg border border-white/10 bg-muted/50 px-3 py-2 text-sm font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-white/30 cursor-pointer hover:bg-muted/70 transition-colors"
+        >
+          <option value="all">Alle Initiativen</option>
           {engagements.map(e => (
-            <button
-              key={e.id}
-              onClick={() => selectEngagement(e.id)}
-              className={cn(
-                'px-2.5 py-1 rounded text-xs font-medium transition-colors',
-                activeEngagementId === e.id
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground'
-              )}
-            >
-              {e.eng_alias ?? e.name}
-            </button>
+            <option key={e.id} value={e.id}>{e.eng_alias ?? e.name}</option>
           ))}
-        </div>
+        </select>
       </div>
 
       {/* Calendar grid */}

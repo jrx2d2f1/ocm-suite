@@ -192,34 +192,31 @@ export function KanbanBoard({
   return (
     <div className="flex flex-col gap-3 min-w-0 flex-1 overflow-hidden">
 
-      {/* ── Filter rows ── */}
-      <div className="space-y-2 shrink-0">
-        <div className="flex gap-1.5 flex-wrap">
-          <Pill active={activeCustomerId === 'all'} onClick={() => selectCustomer('all')}>
-            Alle Kunden
-          </Pill>
-          {customers.map((c) => (
-            <Pill key={c.id} active={activeCustomerId === c.id} onClick={() => selectCustomer(c.id)}>
-              {c.name}
-            </Pill>
+      {/* ── Filter ── */}
+      <div className="flex items-center gap-2 shrink-0 flex-wrap">
+        <select
+          value={activeCustomerId}
+          onChange={e => selectCustomer(e.target.value)}
+          className="rounded-lg border border-white/10 bg-muted/50 px-3 py-2 text-sm font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-white/30 cursor-pointer hover:bg-muted/70 transition-colors"
+        >
+          <option value="all">Alle Kunden</option>
+          {customers.map(c => (
+            <option key={c.id} value={c.id}>{c.name}</option>
           ))}
-        </div>
-        <div className="flex gap-1.5 flex-wrap items-center">
-          <Pill active={activeEngagementId === 'all'} onClick={() => selectEngagement('all')}>
-            Alle
-          </Pill>
-          {visibleEngagements.map((e) => (
-            <Pill
-              key={e.id}
-              active={activeEngagementId === e.id}
-              dot={statusDot(e.status)}
-              onClick={() => selectEngagement(e.id)}
-            >
-              {e.eng_alias ?? e.name}
-            </Pill>
+        </select>
+
+        <select
+          value={activeEngagementId}
+          onChange={e => selectEngagement(e.target.value)}
+          className="rounded-lg border border-white/10 bg-muted/50 px-3 py-2 text-sm font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-white/30 cursor-pointer hover:bg-muted/70 transition-colors"
+        >
+          <option value="all">Alle Initiativen</option>
+          {visibleEngagements.map(e => (
+            <option key={e.id} value={e.id}>{e.eng_alias ?? e.name}</option>
           ))}
-          <span className="ml-auto text-sm text-muted-foreground">{tasks.length} Tasks</span>
-        </div>
+        </select>
+
+        <span className="ml-auto text-sm text-muted-foreground">{tasks.length} Tasks</span>
       </div>
 
       {/* ── Board ── */}
