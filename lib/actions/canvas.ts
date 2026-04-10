@@ -15,6 +15,16 @@ type PhaseInput = {
   sort_order: number
 }
 
+/** Convert 'YYYY-MM' to the last calendar day of that month as 'YYYY-MM-DD'. */
+function lastDayOfMonth(yyyyMM: string | null): string | null {
+  if (!yyyyMM || !/^\d{4}-\d{2}$/.test(yyyyMM)) return null
+  const y = parseInt(yyyyMM.slice(0, 4))
+  const m = parseInt(yyyyMM.slice(5, 7)) // 1-indexed
+  // new Date(y, m, 0) gives the last day of month m (because day 0 = last day of previous month)
+  const last = new Date(y, m, 0)
+  return `${y}-${String(m).padStart(2, '0')}-${String(last.getDate()).padStart(2, '0')}`
+}
+
 type KpiInput = {
   id?: string
   kr_id?: string | null
@@ -56,7 +66,15 @@ export async function saveCanvas(args: {
     .eq('id', canvasId)
   if (error) throw new Error(error.message)
 
-  // 2. Phases
+  // Fetch engagement_id so we can sync milestones
+  const { data: canvasRow } = await supabase
+    .from('canvas_data')
+    .select('engagement_id')
+    .eq('id', canvasId)
+    .single()
+  const engagementId = canvasRow?.engagement_id ?? null
+
+  // 2. Phases — deleted phases cascade-delete their linked milestones via FK
   if (deletedPhaseIds.length > 0) {
     await supabase.from('canvas_phases').delete().in('id', deletedPhaseIds)
   }
@@ -72,10 +90,44 @@ export async function saveCanvas(args: {
       goal: p.goal,
       sort_order: p.sort_order,
     }
+    let phaseId: string
     if (p.id) {
       await supabase.from('canvas_phases').update(row).eq('id', p.id)
+      phaseId = p.id
     } else {
-      await supabase.from('canvas_phases').insert(row)
+      const { data: inserted } = await supabase
+        .from('canvas_phases')
+        .insert(row)
+        .select('id')
+        .single()
+      phaseId = inserted!.id
+    }
+
+    // Sync milestone: name = phase title, due = last day of end_date month
+    if (engagementId) {
+      const dueDate = lastDayOfMonth(p.end_date)
+      const { data: existingMs } = await supabase
+        .from('milestones')
+        .select('id')
+        .eq('phase_id', phaseId)
+        .maybeSingle()
+
+      if (existingMs) {
+        // Preserve status — only update name, due, sort_order
+        await supabase
+          .from('milestones')
+          .update({ name: p.title, due: dueDate, sort_order: p.sort_order })
+          .eq('phase_id', phaseId)
+      } else {
+        await supabase.from('milestones').insert({
+          phase_id: phaseId,
+          engagement_id: engagementId,
+          name: p.title,
+          due: dueDate,
+          status: 'planned',
+          sort_order: p.sort_order,
+        })
+      }
     }
   }
 
@@ -104,4 +156,5 @@ export async function saveCanvas(args: {
   }
 
   revalidatePath('/canvas')
+  revalidatePath('/dashboard')
 }
