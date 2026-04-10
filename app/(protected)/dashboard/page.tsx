@@ -64,7 +64,6 @@ export default async function DashboardPage() {
         .from('milestones')
         .select('id, engagement_id, name, due, status')
         .in('engagement_id', engagementIds)
-        .is('deleted_at', null)
         .order('due')
     : { data: [] }
 
@@ -149,10 +148,21 @@ export default async function DashboardPage() {
     }
   }
 
-  // ── Initial year — default to currentYear so all this year's ─────
-  // milestones are immediately visible; user can navigate for others
+  // ── Initial year — prefer current year if it has milestones, ─────
+  // otherwise use the year closest to today that has milestones
   const currentYear = new Date().getFullYear()
-  const initialYear = currentYear
+  const msYears = [...new Set(
+    (rawMilestones ?? [])
+      .filter(ms => ms.due)
+      .map(ms => parseInt(ms.due!.slice(0, 4)))
+  )]
+  const initialYear = msYears.includes(currentYear)
+    ? currentYear
+    : msYears.length > 0
+      ? msYears.reduce((best, y) =>
+          Math.abs(y - currentYear) < Math.abs(best - currentYear) ? y : best
+        )
+      : currentYear
 
   // ── Render ──────────────────────────────────────────────────────
   return (

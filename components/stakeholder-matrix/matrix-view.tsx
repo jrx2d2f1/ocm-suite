@@ -23,6 +23,7 @@ interface Engagement {
   id: string
   name: string
   eng_alias: string | null
+  customer_id: string
 }
 
 interface Props {
@@ -34,6 +35,11 @@ const REL_TYPES: RelationshipType[] = ['Sponsor', 'Champion', 'Berichtslinie', '
 const INTEREST_VALS: InterestValue[] = ['--', '-', '0', '+', '++']
 const CELL_W = 20
 const CELL_H = 100 / 6
+
+const COLOR_PRESETS = [
+  '#4f8ef7', '#a78bfa', '#22c55e', '#86efac', '#f59e0b',
+  '#f97316', '#f43f5e', '#e879f9', '#06b6d4', '#8b92a8',
+]
 
 // ── Shared panel styles ───────────────────────────────────────────
 const inputCls =
@@ -431,6 +437,341 @@ function RelPanel({
   )
 }
 
+// ── Stakeholder Panel (slide-over) ───────────────────────────────
+function StakeholderPanel({
+  sh, engId, customerId, open, onClose, onSaved, onDeleted,
+}: {
+  sh: MatrixStakeholder | null
+  engId: string
+  customerId: string
+  open: boolean
+  onClose: () => void
+  onSaved: (sh: MatrixStakeholder) => void
+  onDeleted: (id: string) => void
+}) {
+  const isEdit = sh !== null
+
+  const [name, setName] = useState(sh?.name ?? '')
+  const [type, setType] = useState<'person' | 'group'>(sh?.type ?? 'person')
+  const [initials, setInitials] = useState(sh?.initials ?? '')
+  const [color, setColor] = useState(sh?.color ?? COLOR_PRESETS[0])
+  const [role, setRole] = useState(sh?.role ?? '')
+  const [groupSize, setGroupSize] = useState<number>(sh?.group_size ?? 2)
+  const [power, setPower] = useState<number>(sh?.power ?? 3)
+  const [interest, setInterest] = useState<InterestValue>(sh?.interest ?? '0')
+  const [riskFlag, setRiskFlag] = useState(sh?.risk_flag ?? false)
+  const [relToConsultant, setRelToConsultant] = useState(sh?.rel_to_consultant ?? '')
+  const [isPending, startTransition] = useTransition()
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    setName(sh?.name ?? '')
+    setType(sh?.type ?? 'person')
+    setInitials(sh?.initials ?? '')
+    setColor(sh?.color ?? COLOR_PRESETS[0])
+    setRole(sh?.role ?? '')
+    setGroupSize(sh?.group_size ?? 2)
+    setPower(sh?.power ?? 3)
+    setInterest(sh?.interest ?? '0')
+    setRiskFlag(sh?.risk_flag ?? false)
+    setRelToConsultant(sh?.rel_to_consultant ?? '')
+    setError(null)
+  }, [sh?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const intCol = INTEREST_COLOR[interest]
+
+  function handleSave() {
+    if (!name.trim()) { setError('Name ist ein Pflichtfeld.'); return }
+    setError(null)
+    startTransition(async () => {
+      try {
+        const supabase = createClient()
+        const shData = {
+          name: name.trim(),
+          type,
+          role: role.trim() || null,
+          initials: initials.trim() || null,
+          color: color || null,
+          group_size: type === 'group' ? (groupSize || null) : null,
+        }
+        const profData = {
+          power,
+          interest,
+          risk_flag: riskFlag,
+          rel_to_consultant: relToConsultant.trim() || null,
+        }
+
+        if (isEdit && sh) {
+          const [{ error: e1 }, { error: e2 }] = await Promise.all([
+            supabase.from('stakeholders').update(shData).eq('id', sh.id),
+            supabase.from('stakeholder_profiles').update(profData).eq('stakeholder_id', sh.id).eq('engagement_id', engId),
+          ])
+          if (e1) throw e1
+          if (e2) throw e2
+          onSaved({ ...sh, ...shData, ...profData, posX: 0, posY: 0 })
+        } else {
+          const { data: newSh, error: e1 } = await supabase
+            .from('stakeholders')
+            .insert({ customer_id: customerId, ...shData })
+            .select('id').single()
+          if (e1) throw e1
+          const { error: e2 } = await supabase
+            .from('stakeholder_profiles')
+            .insert({ stakeholder_id: newSh.id, engagement_id: engId, ...profData })
+          if (e2) throw e2
+          onSaved({ id: newSh.id, ...shData, ...profData, posX: 0, posY: 0 })
+        }
+      } catch (e: any) {
+        setError(e.message ?? 'Fehler beim Speichern.')
+      }
+    })
+  }
+
+  function handleDelete() {
+    if (!sh) return
+    startTransition(async () => {
+      try {
+        const supabase = createClient()
+        const { error: err } = await supabase
+          .from('stakeholder_profiles')
+          .delete()
+          .eq('stakeholder_id', sh.id)
+          .eq('engagement_id', engId)
+        if (err) throw err
+        onDeleted(sh.id)
+      } catch (e: any) {
+        setError(e.message ?? 'Fehler beim Löschen.')
+      }
+    })
+  }
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        className={cn(
+          'fixed inset-0 z-30 bg-black/30 backdrop-blur-[2px] transition-opacity',
+          open ? 'opacity-100' : 'pointer-events-none opacity-0'
+        )}
+        onClick={onClose}
+      />
+
+      {/* Slide-over panel */}
+      <div
+        className={cn(
+          'fixed right-0 top-0 z-40 flex h-screen w-[420px] flex-col',
+          'border-l border-white/10 bg-background/90 backdrop-blur-xl',
+          'shadow-[-8px_0_32px_rgba(0,0,0,0.3)]',
+          'transition-transform duration-300',
+          open ? 'translate-x-0' : 'translate-x-full'
+        )}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-white/10 px-5 py-4 bg-white/[0.03] shrink-0">
+          <div className="flex items-center gap-2.5">
+            <div
+              className="w-6 h-6 rounded-full shrink-0 flex items-center justify-center text-[9px] font-bold text-white"
+              style={{ background: color ?? '#4f8ef7' }}
+            >
+              {(initials || name).slice(0, 2).toUpperCase() || '?'}
+            </div>
+            <span className="text-sm font-semibold">{isEdit ? 'Stakeholder bearbeiten' : 'Neuer Stakeholder'}</span>
+          </div>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors p-1">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto space-y-4 px-5 py-5">
+
+          {/* Name */}
+          <div className="space-y-1.5">
+            <FieldLabel>Name *</FieldLabel>
+            <input
+              className={inputCls}
+              value={name}
+              onChange={e => setName(e.target.value)}
+              placeholder="Name des Stakeholders…"
+            />
+          </div>
+
+          {/* Typ */}
+          <div className="space-y-1.5">
+            <FieldLabel>Typ</FieldLabel>
+            <div className="flex gap-2">
+              {(['person', 'group'] as const).map(t => (
+                <button
+                  key={t}
+                  onClick={() => setType(t)}
+                  className={cn(
+                    'flex-1 py-1.5 rounded text-xs font-medium transition-colors border',
+                    type === t
+                      ? 'bg-primary/20 text-primary border-primary/40'
+                      : 'bg-white/5 text-muted-foreground border-white/10 hover:bg-white/10'
+                  )}
+                >
+                  {t === 'person' ? 'Person' : 'Gruppe'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Initials + Color */}
+          <div className="flex gap-4">
+            <div className="space-y-1.5 w-28 shrink-0">
+              <FieldLabel>Kürzel (max. 3)</FieldLabel>
+              <input
+                className={inputCls}
+                value={initials}
+                maxLength={3}
+                onChange={e => setInitials(e.target.value.toUpperCase())}
+                placeholder="z.B. TM"
+              />
+            </div>
+            <div className="space-y-1.5 flex-1">
+              <FieldLabel>Farbe</FieldLabel>
+              <div className="flex flex-wrap gap-2 pt-0.5">
+                {COLOR_PRESETS.map(c => (
+                  <button
+                    key={c}
+                    onClick={() => setColor(c)}
+                    className="w-5 h-5 rounded-full transition-transform hover:scale-110 shrink-0"
+                    style={{
+                      background: c,
+                      outline: color === c ? `2px solid ${c}` : undefined,
+                      outlineOffset: color === c ? 2 : undefined,
+                      boxShadow: color === c ? `0 0 6px ${c}60` : undefined,
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Role (person) or group size (group) */}
+          {type === 'person' ? (
+            <div className="space-y-1.5">
+              <FieldLabel>Rolle / Position</FieldLabel>
+              <input
+                className={inputCls}
+                value={role}
+                onChange={e => setRole(e.target.value)}
+                placeholder="z.B. CIO, Head of HR…"
+              />
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              <FieldLabel>Anzahl Personen</FieldLabel>
+              <input
+                type="number"
+                min={1}
+                className={inputCls}
+                value={groupSize}
+                onChange={e => setGroupSize(Number(e.target.value))}
+              />
+            </div>
+          )}
+
+          {/* Power */}
+          <div className="space-y-1.5">
+            <FieldLabel>Power (Einfluss)</FieldLabel>
+            <div className="flex gap-2 pt-0.5">
+              {[0, 1, 2, 3, 4, 5].map(v => (
+                <button
+                  key={v}
+                  onClick={() => setPower(v)}
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all"
+                  style={{
+                    background: v === power ? '#4f8ef7' : 'rgba(255,255,255,0.06)',
+                    color: v === power ? '#fff' : 'rgba(255,255,255,0.3)',
+                    boxShadow: v === power ? '0 0 8px #4f8ef750' : undefined,
+                  }}
+                >
+                  {v}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Interest */}
+          <div className="space-y-1.5">
+            <FieldLabel>Interest (Interesse)</FieldLabel>
+            <div className="flex gap-1.5 pt-0.5">
+              {INTEREST_VALS.map(v => {
+                const c = INTEREST_COLOR[v]
+                const sel = v === interest
+                return (
+                  <button
+                    key={v}
+                    onClick={() => setInterest(v)}
+                    className="flex-1 py-1.5 rounded text-xs font-mono font-bold transition-all border"
+                    style={{
+                      background: sel ? c + '33' : 'rgba(255,255,255,0.04)',
+                      color: sel ? c : 'rgba(255,255,255,0.3)',
+                      borderColor: sel ? c + '60' : 'rgba(255,255,255,0.08)',
+                      boxShadow: sel ? `0 0 8px ${c}40` : undefined,
+                    }}
+                  >
+                    {v}
+                  </button>
+                )
+              })}
+            </div>
+            <div className="text-[10px] text-center font-medium" style={{ color: intCol }}>
+              {INTEREST_LABEL[interest]}
+            </div>
+          </div>
+
+          {/* Rel to consultant */}
+          <div className="space-y-1.5">
+            <FieldLabel>Verhältnis zum Berater</FieldLabel>
+            <input
+              className={inputCls}
+              value={relToConsultant}
+              onChange={e => setRelToConsultant(e.target.value)}
+              placeholder="z.B. Sponsor, Critic…"
+            />
+          </div>
+
+          {/* Risk flag */}
+          <label className="flex items-center gap-2.5 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={riskFlag}
+              onChange={e => setRiskFlag(e.target.checked)}
+              className="accent-rose-500"
+            />
+            <span className="text-sm text-muted-foreground">⚠ Risiko-Flag (gestrichelter Ring)</span>
+          </label>
+
+          {error && <p className="text-xs text-rose-400">{error}</p>}
+        </div>
+
+        {/* Footer */}
+        <div className="border-t border-white/10 px-5 py-3 flex gap-2 bg-white/[0.02] shrink-0">
+          {isEdit && (
+            <button
+              onClick={handleDelete}
+              disabled={isPending}
+              className="flex items-center gap-1.5 text-xs text-rose-400/70 hover:text-rose-400 transition-colors mr-auto disabled:opacity-50"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Aus Initiative entfernen
+            </button>
+          )}
+          <Button variant="ghost" onClick={onClose} disabled={isPending} className="ml-auto hover:bg-white/10">
+            Abbrechen
+          </Button>
+          <Button onClick={handleSave} disabled={isPending || !name.trim()} className="bg-primary/90 hover:bg-primary">
+            {isPending ? 'Speichern…' : 'Speichern'}
+          </Button>
+        </div>
+      </div>
+    </>
+  )
+}
+
 // ── Main MatrixView ───────────────────────────────────────────────
 export function MatrixView({ engagements, initialEngagementId }: Props) {
   const router = useRouter()
@@ -438,13 +779,17 @@ export function MatrixView({ engagements, initialEngagementId }: Props) {
   const [stakeholders, setStakeholders] = useState<MatrixStakeholder[]>([])
   const [relationships, setRelationships] = useState<MatrixRelationship[]>([])
   const [loading, setLoading] = useState(false)
-  const [selectedSh, setSelectedSh] = useState<MatrixStakeholder | null>(null)
   const [hoveredRel, setHoveredRel] = useState<number | null>(null)
   const [tooltip, setTooltip] = useState<{ rel: MatrixRelationship; x: number; y: number } | null>(null)
   const [relPanelOpen, setRelPanelOpen] = useState(false)
   const [relPanelRel, setRelPanelRel] = useState<MatrixRelationship | null>(null)
+  const [shPanelOpen, setShPanelOpen] = useState(false)
+  const [shPanelSh, setShPanelSh] = useState<MatrixStakeholder | null>(null)
   const canvasRef = useRef<HTMLDivElement>(null)
   const [canvasDims, setCanvasDims] = useState({ w: 0, h: 0 })
+
+  const activeEng = engagements.find(e => e.id === engId)
+  const customerId = activeEng?.customer_id ?? ''
 
   useEffect(() => {
     if (!canvasRef.current) return
@@ -507,14 +852,15 @@ export function MatrixView({ engagements, initialEngagementId }: Props) {
 
   function selectEngagement(id: string) {
     setEngId(id)
-    setSelectedSh(null)
     setRelPanelOpen(false)
+    setShPanelOpen(false)
     router.push(`/stakeholders?engagement=${id}`, { scroll: false })
   }
 
   function openRelPanel(rel: MatrixRelationship | null) {
     setRelPanelRel(rel)
     setRelPanelOpen(true)
+    setShPanelOpen(false)
     setTooltip(null)
     setHoveredRel(null)
   }
@@ -534,7 +880,30 @@ export function MatrixView({ engagements, initialEngagementId }: Props) {
     setRelPanelOpen(false)
   }
 
-  const intLabel = selectedSh ? INTEREST_LABEL[selectedSh.interest] ?? '' : ''
+  function openShPanel(sh: MatrixStakeholder | null) {
+    setShPanelSh(sh)
+    setShPanelOpen(true)
+    setRelPanelOpen(false)
+    setTooltip(null)
+    setHoveredRel(null)
+  }
+
+  function handleShSaved(saved: MatrixStakeholder) {
+    setStakeholders(prev => {
+      const idx = prev.findIndex(s => s.id === saved.id)
+      const updated = idx >= 0
+        ? [...prev.slice(0, idx), saved, ...prev.slice(idx + 1)]
+        : [...prev, saved]
+      return computePositions(updated)
+    })
+    setShPanelOpen(false)
+  }
+
+  function handleShDeleted(id: string) {
+    setStakeholders(prev => computePositions(prev.filter(s => s.id !== id)))
+    setRelationships(prev => prev.filter(r => r.from_id !== id && r.to_id !== id))
+    setShPanelOpen(false)
+  }
 
   return (
     <div className="flex flex-col gap-3 flex-1 min-h-0">
@@ -559,11 +928,23 @@ export function MatrixView({ engagements, initialEngagementId }: Props) {
           ))}
         </div>
 
-        {/* Neue Beziehung button */}
+        {/* Action buttons */}
+        {engId && !loading && (
+          <button
+            onClick={() => openShPanel(null)}
+            className="ml-auto flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground transition-colors"
+          >
+            <Plus className="h-3 w-3" />
+            Neuer Stakeholder
+          </button>
+        )}
         {engId && !loading && stakeholders.length >= 2 && (
           <button
             onClick={() => openRelPanel(null)}
-            className="ml-auto flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground transition-colors"
+            className={cn(
+              'flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground transition-colors',
+              !engId || loading ? 'ml-auto' : ''
+            )}
           >
             <Plus className="h-3 w-3" />
             Neue Beziehung
@@ -571,7 +952,7 @@ export function MatrixView({ engagements, initialEngagementId }: Props) {
         )}
 
         {/* Legend */}
-        <div className={cn('flex items-center gap-4 text-[10px] text-muted-foreground flex-wrap', engId && !loading && stakeholders.length >= 2 ? '' : 'ml-auto')}>
+        <div className="flex items-center gap-4 text-[10px] text-muted-foreground flex-wrap">
           <span className="flex items-center gap-1.5">
             <span className="inline-block w-3.5 h-3.5 rounded-full bg-primary/60" />Person
           </span>
@@ -593,7 +974,7 @@ export function MatrixView({ engagements, initialEngagementId }: Props) {
               {engagements.find(e => e.id === engId)?.name ?? ''}
             </span>
             <span className="text-[10px] text-muted-foreground/50">
-              Linie anklicken zum Bearbeiten
+              Dot / Zeile anklicken zum Bearbeiten · Linie anklicken für Beziehungen
             </span>
           </div>
 
@@ -650,7 +1031,7 @@ export function MatrixView({ engagements, initialEngagementId }: Props) {
                   <StakeholderDot
                     key={sh.id}
                     sh={sh}
-                    onClick={s => setSelectedSh(prev => prev?.id === s.id ? null : s)}
+                    onClick={s => openShPanel(s)}
                   />
                 ))}
 
@@ -698,15 +1079,11 @@ export function MatrixView({ engagements, initialEngagementId }: Props) {
               stakeholders.map(sh => {
                 const col = sh.color ?? INTEREST_COLOR[sh.interest as InterestValue] ?? '#4f8ef7'
                 const intCol = INTEREST_COLOR[sh.interest as InterestValue] ?? '#8b92a8'
-                const isSelected = selectedSh?.id === sh.id
                 return (
                   <div
                     key={sh.id}
-                    className={cn(
-                      'flex flex-col gap-1.5 px-3 py-2.5 cursor-pointer transition-colors',
-                      isSelected ? 'bg-white/[0.06]' : 'hover:bg-white/[0.03]'
-                    )}
-                    onClick={() => setSelectedSh(prev => prev?.id === sh.id ? null : sh)}
+                    className="flex flex-col gap-1.5 px-3 py-2.5 cursor-pointer transition-colors hover:bg-white/[0.05]"
+                    onClick={() => openShPanel(sh)}
                   >
                     <div className="flex items-center gap-2.5">
                       <div
@@ -748,14 +1125,6 @@ export function MatrixView({ engagements, initialEngagementId }: Props) {
                         <span className="text-[9px] px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-400">⚠ Risiko</span>
                       )}
                     </div>
-                    {isSelected && (
-                      <div className="pl-9 mt-0.5 space-y-1">
-                        {sh.role && sh.type === 'person' && (
-                          <div className="text-[10px] text-muted-foreground/70">{sh.role}</div>
-                        )}
-                        <div className="text-[10px] font-semibold" style={{ color: intCol }}>{intLabel}</div>
-                      </div>
-                    )}
                   </div>
                 )
               })
@@ -766,6 +1135,17 @@ export function MatrixView({ engagements, initialEngagementId }: Props) {
 
       {/* Relationship tooltip (hover) */}
       {tooltip && <RelTooltip rel={tooltip.rel} x={tooltip.x} y={tooltip.y} />}
+
+      {/* Stakeholder slide-over panel */}
+      <StakeholderPanel
+        sh={shPanelSh}
+        engId={engId}
+        customerId={customerId}
+        open={shPanelOpen}
+        onClose={() => setShPanelOpen(false)}
+        onSaved={handleShSaved}
+        onDeleted={handleShDeleted}
+      />
 
       {/* Relationship slide-over panel */}
       <RelPanel

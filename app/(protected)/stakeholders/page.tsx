@@ -23,7 +23,7 @@ export default async function StakeholdersPage({
 
   const { data: engagements } = await supabase
     .from('engagements')
-    .select('id, name, eng_alias, status')
+    .select('id, name, eng_alias, status, customer_id')
     .eq('org_id', membership.org_id)
     .is('deleted_at', null)
     .order('name')
