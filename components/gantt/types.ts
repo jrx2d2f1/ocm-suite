@@ -22,6 +22,7 @@ export interface GanttEngagement {
 export interface GanttCustomer {
   id: string
   name: string
+  parent_id: string | null
   engagements: GanttEngagement[]
 }
 

@@ -1,9 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronDown, ChevronRight, ChevronLeft } from 'lucide-react'
+import { ChevronDown, ChevronRight, ChevronLeft, X, Trash2, Plus, Pencil, Target } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { upsertCustomer, deleteCustomer } from '@/lib/actions/customers'
 import {
   type GanttGroup,
   type GanttEngagement,
@@ -27,6 +29,12 @@ const MS_COLOR: Record<string, string> = {
   delayed:  '#f43f5e',
 }
 
+const inputCls = 'w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/30 placeholder:text-muted-foreground/50 transition-colors hover:bg-white/[0.07]'
+
+// ── Local types ───────────────────────────────────────────────────
+interface FlatCustomer { id: string; name: string; parent_id: string | null; acct_type: string | null }
+interface CustEdit { id?: string; name: string; parent_id: string | null; acct_type: string }
+
 // ── Helpers ───────────────────────────────────────────────────────
 function ymToDate(ym: string): Date {
   const [y, m] = ym.split('-').map(Number)
@@ -39,8 +47,8 @@ function ymToDateExclusive(ym: string): Date {
 }
 
 // ── Row types ─────────────────────────────────────────────────────
-type GroupRow = { kind: 'group';    id: string; name: string }
-type CustRow  = { kind: 'customer'; id: string; name: string }
+type GroupRow = { kind: 'group';    id: string; name: string; hasSubCustomers: boolean }
+type CustRow  = { kind: 'customer'; id: string; name: string; hasEngagements: boolean }
 type EngRow   = { kind: 'eng';  eng: GanttEngagement; indent: number }
 // One row per engagement that has milestones — all milestones rendered together
 type MsRow    = { kind: 'ms'; engId: string; milestones: GanttMilestone[]; indent: number }
@@ -49,12 +57,16 @@ type Row = GroupRow | CustRow | EngRow | MsRow
 function buildRows(groups: GanttGroup[], collapsed: Set<string>): Row[] {
   const rows: Row[] = []
   for (const g of groups) {
-    rows.push({ kind: 'group', id: g.id, name: g.name })
+    const hasSubCustomers = !(g.customers.length === 1 && g.customers[0].id === g.id)
+    rows.push({ kind: 'group', id: g.id, name: g.name, hasSubCustomers })
     if (collapsed.has(g.id)) continue
 
-    const showCustRow = !(g.customers.length === 1 && g.customers[0].id === g.id)
+    const showCustRow = hasSubCustomers
     for (const c of g.customers) {
-      if (showCustRow) rows.push({ kind: 'customer', id: c.id, name: c.name })
+      const hasEngagements = c.engagements.length > 0
+      if (showCustRow) rows.push({ kind: 'customer', id: c.id, name: c.name, hasEngagements })
+      // Skip engagement/milestone rows if this customer is collapsed
+      if (collapsed.has(c.id)) continue
       for (const eng of c.engagements) {
         const engIndent = showCustRow ? 2 : 1
         rows.push({ kind: 'eng', eng, indent: engIndent })
@@ -67,17 +79,202 @@ function buildRows(groups: GanttGroup[], collapsed: Set<string>): Row[] {
   return rows
 }
 
+// ── CustomerPanel (slide-over) ────────────────────────────────────
+const ACCT_TYPES = ['Gruppe', 'GmbH', 'AG', 'KGaA', 'SE', 'GmbH & Co. KG', 'Inc.', 'Corp.']
+
+function CustomerPanel({
+  edit,
+  orgId,
+  allCustomers,
+  open,
+  onClose,
+}: {
+  edit: CustEdit
+  orgId: string
+  allCustomers: FlatCustomer[]
+  open: boolean
+  onClose: () => void
+}) {
+  const router = useRouter()
+  const isEditMode = !!edit.id
+
+  const [name, setName]       = useState(edit.name)
+  const [acctType, setAcctType] = useState(edit.acct_type)
+  const [parentId, setParentId] = useState<string>(edit.parent_id ?? '')
+  const [isPending, startTransition] = useTransition()
+  const [error, setError] = useState<string | null>(null)
+
+  // Sync state when panel opens for a different customer
+  useEffect(() => {
+    setName(edit.name)
+    setAcctType(edit.acct_type)
+    setParentId(edit.parent_id ?? '')
+    setError(null)
+  }, [edit.id, edit.parent_id, open]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  function handleSave() {
+    if (!name.trim()) { setError('Name ist ein Pflichtfeld.'); return }
+    setError(null)
+    startTransition(async () => {
+      try {
+        await upsertCustomer({
+          id: edit.id,
+          org_id: orgId,
+          name: name.trim(),
+          parent_id: parentId || null,
+          acct_type: acctType || null,
+        })
+        router.refresh()
+        onClose()
+      } catch (e: any) {
+        setError(e.message ?? 'Fehler beim Speichern.')
+      }
+    })
+  }
+
+  function handleDelete() {
+    if (!edit.id) return
+    startTransition(async () => {
+      try {
+        await deleteCustomer(edit.id!)
+        router.refresh()
+        onClose()
+      } catch (e: any) {
+        setError(e.message ?? 'Fehler beim Löschen.')
+      }
+    })
+  }
+
+  // Only top-level customers (parent_id is null) can be chosen as parent,
+  // and a customer can't be its own parent
+  const parentOptions = allCustomers.filter(c => c.parent_id === null && c.id !== edit.id)
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        className={cn(
+          'fixed inset-0 z-30 bg-black/30 backdrop-blur-[2px] transition-opacity',
+          open ? 'opacity-100' : 'pointer-events-none opacity-0'
+        )}
+        onClick={onClose}
+      />
+
+      {/* Slide-over panel */}
+      <div
+        className={cn(
+          'fixed right-0 top-0 z-40 flex h-screen w-[400px] flex-col',
+          'border-l border-white/10 bg-background/90 backdrop-blur-xl',
+          'shadow-[-8px_0_32px_rgba(0,0,0,0.3)]',
+          'transition-transform duration-300',
+          open ? 'translate-x-0' : 'translate-x-full'
+        )}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-white/10 px-5 py-4 bg-white/[0.03] shrink-0">
+          <h2 className="text-sm font-semibold">
+            {isEditMode ? 'Kunde bearbeiten' : 'Neuer Kunde'}
+          </h2>
+          <button
+            onClick={onClose}
+            className="rounded p-1 hover:bg-white/10 transition-colors"
+            aria-label="Schließen"
+          >
+            <X className="h-4 w-4 text-muted-foreground" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
+          {error && (
+            <p className="text-xs text-rose-400 bg-rose-500/10 rounded-lg px-3 py-2">{error}</p>
+          )}
+
+          {/* Name */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">
+              Name <span className="text-rose-400">*</span>
+            </label>
+            <input
+              className={inputCls}
+              value={name}
+              onChange={e => setName(e.target.value)}
+              placeholder="Kundenname"
+            />
+          </div>
+
+          {/* Typ */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">Typ</label>
+            <select
+              className={inputCls}
+              value={acctType}
+              onChange={e => setAcctType(e.target.value)}
+            >
+              <option value="">— Kein Typ —</option>
+              {ACCT_TYPES.map(t => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Übergeordneter Kunde */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">Übergeordneter Kunde</label>
+            <select
+              className={inputCls}
+              value={parentId}
+              onChange={e => setParentId(e.target.value)}
+            >
+              <option value="">— Kein übergeordneter Kunde —</option>
+              {parentOptions.map(c => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="border-t border-white/10 px-5 py-4 flex items-center gap-3 bg-white/[0.02] shrink-0">
+          {isEditMode && (
+            <button
+              onClick={handleDelete}
+              disabled={isPending}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-rose-400 hover:bg-rose-500/10 transition-colors disabled:opacity-50"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Löschen
+            </button>
+          )}
+          <div className="ml-auto flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={onClose} disabled={isPending}>
+              Abbrechen
+            </Button>
+            <Button size="sm" onClick={handleSave} disabled={isPending}>
+              {isPending ? 'Speichert…' : 'Speichern'}
+            </Button>
+          </div>
+        </div>
+      </div>
+    </>
+  )
+}
+
 // ── Component ─────────────────────────────────────────────────────
 interface Props {
   groups: GanttGroup[]
   initialYear: number
+  orgId: string
+  allCustomers: FlatCustomer[]
 }
 
-export function GanttChart({ groups, initialYear }: Props) {
+export function GanttChart({ groups, initialYear, orgId, allCustomers }: Props) {
   const router = useRouter()
   const [year, setYear]           = useState(initialYear)
   const [period, setPeriod]       = useState<PeriodKey>('year')
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
+  const [custPanelOpen, setCustPanelOpen] = useState(false)
+  const [custPanelEdit, setCustPanelEdit] = useState<CustEdit>({ name: '', parent_id: null, acct_type: '' })
 
   const months     = PERIOD_MONTHS[period]
   const n          = months.length
@@ -98,6 +295,16 @@ export function GanttChart({ groups, initialYear }: Props) {
       next.has(id) ? next.delete(id) : next.add(id)
       return next
     })
+  }
+
+  function findCustomer(id: string): CustEdit {
+    const c = allCustomers.find(x => x.id === id)
+    return { id, name: c?.name ?? '', parent_id: c?.parent_id ?? null, acct_type: c?.acct_type ?? '' }
+  }
+
+  function openCustPanel(edit: CustEdit) {
+    setCustPanelEdit(edit)
+    setCustPanelOpen(true)
   }
 
   const rows = buildRows(groups, collapsed)
@@ -166,11 +373,18 @@ export function GanttChart({ groups, initialYear }: Props) {
         ))}
 
         {showToday && (
-          <span className="ml-auto text-xs text-muted-foreground flex items-center gap-1.5">
+          <span className="text-xs text-muted-foreground flex items-center gap-1.5">
             <span className="inline-block w-2 h-2 rounded-full bg-teal/60" />
             Heute
           </span>
         )}
+
+        <button
+          onClick={() => openCustPanel({ name: '', parent_id: null, acct_type: '' })}
+          className="ml-auto flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground transition-colors"
+        >
+          <Plus className="h-3 w-3" /> Neuer Kunde
+        </button>
       </div>
 
       {/* Legend */}
@@ -234,15 +448,46 @@ export function GanttChart({ groups, initialYear }: Props) {
                 return (
                   <div key={`g-${row.id}`} className="flex border-b border-white/5" style={{ height: ROW_H }}>
                     <div
-                      className="sticky left-0 z-10 shrink-0 bg-bg-mid/60 border-r border-white/10 flex items-center gap-1.5 px-2 cursor-pointer hover:bg-bg-mid/80 select-none"
+                      className="sticky left-0 z-10 shrink-0 bg-bg-mid/60 border-r border-white/10 flex items-center gap-1.5 px-2 select-none group"
                       style={{ width: LABEL_W }}
-                      onClick={() => toggle(row.id)}
                     >
-                      {open
-                        ? <ChevronDown  className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                        : <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                      }
-                      <span className="text-sm font-semibold truncate">{row.name}</span>
+                      {/* Collapse toggle */}
+                      <button
+                        onClick={() => toggle(row.id)}
+                        className="flex items-center gap-1.5 flex-1 min-w-0 cursor-pointer hover:text-foreground transition-colors"
+                      >
+                        {open
+                          ? <ChevronDown  className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                          : <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                        }
+                        <span className="text-sm font-semibold truncate">{row.name}</span>
+                      </button>
+                      {/* Action buttons — visible on hover */}
+                      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                        <button
+                          onClick={() => router.push('/strategy?customer=' + row.id)}
+                          title="Ziele anzeigen"
+                          className="p-1 rounded hover:bg-white/10 transition-colors"
+                        >
+                          <Target className="h-3 w-3 text-muted-foreground" />
+                        </button>
+                        {row.hasSubCustomers && (
+                          <button
+                            onClick={() => openCustPanel({ name: '', parent_id: row.id, acct_type: '' })}
+                            title="Untergeordneten Kunden hinzufügen"
+                            className="p-1 rounded hover:bg-white/10 transition-colors"
+                          >
+                            <Plus className="h-3 w-3 text-muted-foreground" />
+                          </button>
+                        )}
+                        <button
+                          onClick={() => openCustPanel(findCustomer(row.id))}
+                          title="Kunde bearbeiten"
+                          className="p-1 rounded hover:bg-white/10 transition-colors"
+                        >
+                          <Pencil className="h-3 w-3 text-muted-foreground" />
+                        </button>
+                      </div>
                     </div>
                     <div className="relative flex-1"><TimelineBg shade /></div>
                   </div>
@@ -251,13 +496,53 @@ export function GanttChart({ groups, initialYear }: Props) {
 
               // ── Customer row ───────────────────────────────────
               if (row.kind === 'customer') {
+                const custOpen = !collapsed.has(row.id)
                 return (
                   <div key={`c-${row.id}`} className="flex border-b border-white/5" style={{ height: ROW_H }}>
                     <div
-                      className="sticky left-0 z-10 shrink-0 bg-background border-r border-white/10 flex items-center pl-7 pr-2"
+                      className="sticky left-0 z-10 shrink-0 bg-background border-r border-white/10 flex items-center pr-2 select-none group"
                       style={{ width: LABEL_W }}
                     >
-                      <span className="text-xs font-medium text-muted-foreground truncate">{row.name}</span>
+                      {/* Collapse chevron — only shown if customer has engagements */}
+                      {row.hasEngagements ? (
+                        <button
+                          onClick={() => toggle(row.id)}
+                          className="pl-5 pr-1 flex items-center cursor-pointer hover:text-foreground transition-colors"
+                          aria-label={custOpen ? 'Einklappen' : 'Ausklappen'}
+                        >
+                          {custOpen
+                            ? <ChevronDown  className="h-3 w-3 shrink-0 text-muted-foreground" />
+                            : <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />
+                          }
+                        </button>
+                      ) : (
+                        <span className="pl-7" />
+                      )}
+                      <span
+                        className={cn(
+                          'text-xs font-medium truncate flex-1 min-w-0',
+                          row.hasEngagements ? 'text-muted-foreground' : 'text-muted-foreground/50'
+                        )}
+                      >
+                        {row.name}
+                      </span>
+                      {/* Action buttons — visible on hover */}
+                      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                        <button
+                          onClick={() => router.push('/strategy?customer=' + row.id)}
+                          title="Ziele anzeigen"
+                          className="p-1 rounded hover:bg-white/10 transition-colors"
+                        >
+                          <Target className="h-3 w-3 text-muted-foreground" />
+                        </button>
+                        <button
+                          onClick={() => openCustPanel(findCustomer(row.id))}
+                          title="Kunde bearbeiten"
+                          className="p-1 rounded hover:bg-white/10 transition-colors"
+                        >
+                          <Pencil className="h-3 w-3 text-muted-foreground" />
+                        </button>
+                      </div>
                     </div>
                     <div className="relative flex-1"><TimelineBg /></div>
                   </div>
@@ -354,12 +639,21 @@ export function GanttChart({ groups, initialYear }: Props) {
 
             {rows.length === 0 && (
               <div className="flex items-center justify-center h-32 text-sm text-muted-foreground">
-                Keine Engagements vorhanden.
+                Keine Kunden vorhanden.
               </div>
             )}
           </div>
         </div>
       </div>
+
+      {/* Customer slide-over panel */}
+      <CustomerPanel
+        edit={custPanelEdit}
+        orgId={orgId}
+        allCustomers={allCustomers}
+        open={custPanelOpen}
+        onClose={() => setCustPanelOpen(false)}
+      />
     </div>
   )
 }

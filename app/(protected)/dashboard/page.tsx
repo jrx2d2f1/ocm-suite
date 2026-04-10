@@ -43,7 +43,7 @@ export default async function DashboardPage() {
   const [{ data: customers }, { data: engagements }] = await Promise.all([
     supabase
       .from('customers')
-      .select('id, name, parent_id')
+      .select('id, name, parent_id, acct_type')
       .eq('org_id', membership.org_id)
       .is('deleted_at', null)
       .order('name'),
@@ -115,7 +115,7 @@ export default async function DashboardPage() {
 
   // ── Build group hierarchy ────────────────────────────────────────
   const customerMap = new Map<string, GanttCustomer>(
-    (customers ?? []).map(c => [c.id, { ...c, engagements: [] }])
+    (customers ?? []).map(c => [c.id, { id: c.id, name: c.name, parent_id: c.parent_id ?? null, engagements: [] }])
   )
 
   for (const eng of allEngagements) {
@@ -130,23 +130,25 @@ export default async function DashboardPage() {
 
     const children = (customers ?? [])
       .filter(c => c.parent_id === customer.id)
-      .map(c => customerMap.get(c.id)!)
-      .filter(c => c.engagements.length > 0)
+      .map(c => customerMap.get(c.id))
+      .filter((c): c is GanttCustomer => !!c)
 
     if (children.length > 0) {
-      const ownEngs = customerMap.get(customer.id)!.engagements
-      const groupCustomers: GanttCustomer[] = [
-        ...(ownEngs.length > 0 ? [customerMap.get(customer.id)!] : []),
-        ...children,
-      ]
-      groups.push({ id: customer.id, name: customer.name, customers: groupCustomers })
+      const ownC = customerMap.get(customer.id)!
+      groups.push({ id: customer.id, name: customer.name, customers: [ownC, ...children] })
     } else {
       const c = customerMap.get(customer.id)!
-      if (c.engagements.length > 0) {
-        groups.push({ id: customer.id, name: customer.name, customers: [c] })
-      }
+      groups.push({ id: customer.id, name: customer.name, customers: [c] })
     }
   }
+
+  // Flat list of all customers for the CustomerPanel selects
+  const allCustomers = (customers ?? []).map(c => ({
+    id: c.id,
+    name: c.name,
+    parent_id: c.parent_id ?? null,
+    acct_type: (c as any).acct_type ?? null,
+  }))
 
   // ── Initial year — prefer current year if it has milestones, ─────
   // otherwise use the year closest to today that has milestones
@@ -195,7 +197,12 @@ export default async function DashboardPage() {
         />
       </div>
 
-      <GanttChart groups={groups} initialYear={initialYear} />
+      <GanttChart
+        groups={groups}
+        initialYear={initialYear}
+        orgId={membership.org_id}
+        allCustomers={allCustomers}
+      />
     </div>
   )
 }
